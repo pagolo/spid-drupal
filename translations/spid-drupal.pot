@@ -1,0 +1,354 @@
+# $Id$
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  spid_auth.rules.inc: n/a
+#  spid_auth.module: n/a
+#  spid_auth.info: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2016-08-01 11:22+0200\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: spid_auth.rules.inc:14;21;28;30
+msgid "User"
+msgstr ""
+
+#: spid_auth.rules.inc:20
+msgid "Dopo aver registrato un nuovo utente via SPID"
+msgstr ""
+
+#: spid_auth.rules.inc:23
+msgid "Utente autenticato"
+msgstr ""
+
+#: spid_auth.rules.inc:27
+msgid "Un utente si è autenticato con SPID"
+msgstr ""
+
+#: spid_auth.module:91
+msgid "<p>Questo modulo integra il protocollo di autenticazione SPID in Drupal</p>"
+msgstr ""
+
+#: spid_auth.module:92
+msgid "<p></p>"
+msgstr ""
+
+#: spid_auth.module:103
+msgid "Amministra autenticazione SPID"
+msgstr ""
+
+#: spid_auth.module:104
+msgid "Warning: Give to trusted roles only; this permission has security implications."
+msgstr ""
+
+#: spid_auth.module:119
+msgid "You have been logged out."
+msgstr ""
+
+#: spid_auth.module:122
+msgid "We were unable to log you out of all your sessions. To be completely sure that you are logged out, you need to close your web browser."
+msgstr ""
+
+#: spid_auth.module:142
+msgid "We're sorry this feature is not yet enabled."
+msgstr ""
+
+#: spid_auth.module:164;202
+msgid "We're sorry. There was a problem. The issue has been logged for the administrator."
+msgstr ""
+
+#: spid_auth.module:276
+msgid "Authname is [%authname] userid is [%uid]"
+msgstr ""
+
+#: spid_auth.module:281
+msgid "Load user [%authname]"
+msgstr ""
+
+#: spid_auth.module:291
+msgid "Register [%authname]"
+msgstr ""
+
+#: spid_auth.module:304
+msgid "We are sorry. While you have successfully authenticated, you are not yet entitled to access this site. Please ask the site administrator to provision access for you."
+msgstr ""
+
+#: spid_auth.module:316
+msgid "User already registered [%authname] updating roles."
+msgstr ""
+
+#: spid_auth.module:344
+msgid "We are sorry, users are not permitted to log in using local accounts."
+msgstr ""
+
+#: spid_auth.module:376
+msgid "We are sorry, you are not permitted to log in using a local account."
+msgstr ""
+
+#: spid_auth.module:407
+msgid "Registering user [%acctname]"
+msgstr ""
+
+#: spid_auth.module:410
+msgid "Your user name was not provided by your identity provider (IDP)."
+msgstr ""
+
+#: spid_auth.module:419
+msgid "Updating username [%acctname]"
+msgstr ""
+
+#: spid_auth.module:425
+msgid "Your e-mail address was not provided by your identity provider (IDP)."
+msgstr ""
+
+#: spid_auth.module:440
+msgid "Updating mail [%mailaddr]"
+msgstr ""
+
+#: spid_auth.module:493
+msgid "Please upgrade SimpleSAMLphp. You are using %ssp_version"
+msgstr ""
+
+#: spid_auth.module:501
+msgid "Basic Setup"
+msgstr ""
+
+#: spid_auth.module:506
+msgid "Attiva autenticazione SPID"
+msgstr ""
+
+#: spid_auth.module:508
+msgid "Checking this box before configuring the module could lock you out of Drupal."
+msgstr ""
+
+#: spid_auth.module:515
+msgid "Installation directory (default: /var/simplesamlphp)"
+msgstr ""
+
+#: spid_auth.module:517
+msgid "The base directory of simpleSAMLphp. Absolute path with no trailing slash."
+msgstr ""
+
+#: spid_auth.module:521
+msgid "Autenticaton source for this SP (default: default-sp)"
+msgstr ""
+
+#: spid_auth.module:523
+msgid "The name of the source to use from /var/simplesamlphp/config/authsources.php"
+msgstr ""
+
+#: spid_auth.module:528
+msgid "Autenticaton id for Infocert"
+msgstr ""
+
+#: spid_auth.module:530
+msgid "The name of the infocert_id from /var/simplesamlphp/config/authsources.php"
+msgstr ""
+
+#: spid_auth.module:534
+msgid "Autenticaton id for Poste"
+msgstr ""
+
+#: spid_auth.module:536
+msgid "The name of the poste_id from /var/simplesamlphp/config/authsources.php"
+msgstr ""
+
+#: spid_auth.module:540
+msgid "Autenticaton id for Tim"
+msgstr ""
+
+#: spid_auth.module:542
+msgid "The name of the tim_id from /var/simplesamlphp/config/authsources.php"
+msgstr ""
+
+#: spid_auth.module:547
+msgid "Force https for login links"
+msgstr ""
+
+#: spid_auth.module:549
+msgid "Should be enabled on production sites."
+msgstr ""
+
+#: spid_auth.module:554
+msgid "User Info and Syncing"
+msgstr ""
+
+#: spid_auth.module:559
+msgid "Automatic role population from simpleSAMLphp attributes"
+msgstr ""
+
+#: spid_auth.module:561
+msgid "A pipe separated list of rules.<br />Example: <i>roleid1:condition1|roleid2:contition2...</i> <br />For instance: <i>4:all;1:eduPersonPrincipalName,@=,uninett.no;affiliation,=,employee|2:mail,=,andreas@uninett.no</i>"
+msgstr ""
+
+#: spid_auth.module:565
+msgid "Reevaluate roles every time the user logs in."
+msgstr ""
+
+#: spid_auth.module:567
+msgid "NOTE: This means users could loose any roles that have been assigned manually in Drupal."
+msgstr ""
+
+#: spid_auth.module:572
+msgid "User Provisioning"
+msgstr ""
+
+#: spid_auth.module:578
+msgid "Register users (i.e., auto-provisioning)"
+msgstr ""
+
+#: spid_auth.module:580
+msgid "Determines wether or not the module should automatically create/register new Drupal accounts for users that authenticate using SimpleSAMLphp. Unless you've done some custom work to provision Drupal accounts with the necessary authmap entries you will want this checked.<br /><br />NOTE: If unchecked each user must already have been provisioned a Drupal account with an appropriate entry in the authmap table before logging in. Otherwise they will receive a notice and be denied access. Be aware that simply creating a Drupal account will not create the necessary entry in the authmap table."
+msgstr ""
+
+#: spid_auth.module:585
+msgid "Drupal Authentication"
+msgstr ""
+
+#: spid_auth.module:595
+msgid "Allow authentication with local Drupal accounts"
+msgstr ""
+
+#: spid_auth.module:597
+msgid "Check this box if you want to let people log in with local Drupal accounts (without using simpleSAMLphp). If you want to restrict this privilege to certain users you can enter the Drupal user IDs in the field below."
+msgstr ""
+
+#: spid_auth.module:604
+msgid "Which ROLES should be allowed to login with local accounts?"
+msgstr ""
+
+#: spid_auth.module:606
+msgid "Roles that should be allowed to login without simpleSAMLphp. Examples are dev/admin roles or guest roles."
+msgstr ""
+
+#: spid_auth.module:610
+msgid "Which users should be allowed to login with local accounts?"
+msgstr ""
+
+#: spid_auth.module:612
+msgid "Example: <i>1,2,3</i><br />A comma-separated list of user IDs that should be allowed to login without simpleSAMLphp. If left blank, all local accounts can login."
+msgstr ""
+
+#: spid_auth.module:616
+msgid "Optionally, specify a URL for users to go to after logging out"
+msgstr ""
+
+#: spid_auth.module:649
+msgid "simpleSAMLphp authentication"
+msgstr ""
+
+#: spid_auth.module:685
+msgid "SimpleSAMLphp could not be found at %basedir . The spid_auth module cannot function until the path to the local SimpleSAMLphp instance is configured."
+msgstr ""
+
+#: spid_auth.module:720
+msgid "_spid_auth_get_authname: Valid local session exist"
+msgstr ""
+
+#: spid_auth.module:726
+msgid "error in spid_auth.module: no valid unique id attribute set"
+msgstr ""
+
+#: spid_auth.module:759
+msgid "Non sono stati settati gli attributi ivaCode oppure fiscalNumber per l'utente %uid."
+msgstr ""
+
+#: spid_auth.module:787
+msgid "Non sono stati settati gli attributi \"name\" e \"familyName\" per l'utente %uid."
+msgstr ""
+
+#: spid_auth.module:812
+msgid "Error in spid_auth.module: No valid mail attribute set."
+msgstr ""
+
+#: spid_auth.module:868
+msgid "Evaluate rule (key=%key,operator=%op,value=%val)"
+msgstr ""
+
+#: spid_auth.module:913
+msgid "Rolemap: %rolemap"
+msgstr ""
+
+#: spid_auth.module:923
+msgid "Evaluate rolemap: %rolemap"
+msgstr ""
+
+#: spid_auth.module:928
+msgid "Evaluate role rule: %rolerule"
+msgstr ""
+
+#: spid_auth.module:936
+msgid "Evaluate role evaulation: %roleruleeval"
+msgstr ""
+
+#: spid_auth.module:946
+msgid "Add new role: %roleid"
+msgstr ""
+
+#: spid_auth.module:152;158;379
+msgid "spid_auth"
+msgstr ""
+
+#: spid_auth.module:152
+msgid "A user attempted to login using simplesamlphp but the store.type is phpsession, use memcache or sql for simplesamlphp session storage. See: simplesamlphp/config/config.php."
+msgstr ""
+
+#: spid_auth.module:158
+msgid "A user attempted to login using this module but there was a problem."
+msgstr ""
+
+#: spid_auth.module:379
+msgid "User %name not authorized to log in using local account."
+msgstr ""
+
+#: spid_auth.module:982
+msgid "user"
+msgstr ""
+
+#: spid_auth.module:982
+msgid "Session closed for %name."
+msgstr ""
+
+#: spid_auth.module:51
+msgid "Configurazioni SPID Auth"
+msgstr ""
+
+#: spid_auth.module:52
+msgid "Controlla le diverse configurazioni del modulo di autenticazione SPID"
+msgstr ""
+
+#: spid_auth.module:59
+msgid "Logon to the site"
+msgstr ""
+
+#: spid_auth.module:60
+msgid "Provides a site login page"
+msgstr ""
+
+#: spid_auth.module:67
+msgid "Logout to the site"
+msgstr ""
+
+#: spid_auth.module:68
+msgid "Provides a site logout page"
+msgstr ""
+
+#: spid_auth.info:0
+msgid "SPID Auth"
+msgstr ""
+
+#: spid_auth.info:0
+msgid "Permette l'autenticazione per mezzo del protocollo SPID"
+msgstr ""
+
