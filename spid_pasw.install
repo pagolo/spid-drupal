@@ -1,0 +1,46 @@
+<?php
+
+/**
+ * @file
+ * the install file for the spid_pasw module
+ */
+
+/**
+ * Implements hook_install().
+ */
+function spid_pasw_install() {
+
+  user_role_revoke_permissions(DRUPAL_AUTHENTICATED_RID, array('change own password'));
+
+  // Disable the open registration to the site and store the original setting.
+  $original = variable_get('user_register', 1);
+  variable_set('user_register', 0);
+  variable_set('spid_pasw_user_register_original', $original);
+
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function spid_pasw_uninstall() {
+  // Restore the original user registration directive.
+  $original = variable_get('spid_pasw_user_register_original', 1);
+  variable_set('user_register', $original);
+  variable_del('spid_pasw_user_register_original');
+
+  // Remove the created system variables.
+  variable_del('spid_pasw_activate');
+  variable_del('spid_pasw_installdir');
+  variable_del('spid_pasw_logout_page');
+  variable_del('spid_pasw_authsource');
+  variable_del('spid_pasw_rolepopulation');
+  variable_del('spid_pasw_roleevaleverytime');
+  variable_del('spid_pasw_forcehttps');
+  variable_del('spid_pasw_registerusers');
+  variable_del('spid_pasw_allowsetdrupalpwd');
+  variable_del('spid_pasw_allowdefaultlogin');
+  variable_del('spid_pasw_allowdefaultloginroles');
+  variable_del('spid_pasw_allowdefaultloginusers');
+  variable_del('spid_pasw_logoutgotourl');
+
+}

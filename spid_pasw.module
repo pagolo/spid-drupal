@@ -1,9 +1,16 @@
 <?php
-
+//variable_set('spid_pasw_authsource_sielte', 'http://paolo.casabozzo.net/simplesamlphp/www/saml2/idp/metadata.php');//'http://paolo.casabozzo.net/simplesamlphp/www/saml2/idp/SSOService.php');
+/**
+ * versione PASW - Paolo Bozzo
+ * versione nata all'interno del progetto SPID per PorteAperteSulWeb
+ * Le parti aggiunte o modificate sono commentate con @PASW
+ */
 /* * *********************************
   Nota di Bob: considerazioni generali:
   - praticamente tutte le stringhe sono da tradurre in italiano
   - all'attivazione del modulo, sarebbe opportuno aggiungere ai profili utenti i campi descrittivi previsti da SPID (codice fiscale, data di nascita, etc...)
+  * @PASW i siti pasw-drupal presentano gi� questi campi
+  * studiare un modo per implementarli se non ci sono
   cfr. https://api.drupal.org/api/drupal/modules!field!field.crud.inc/function/field_create_field/7
   - sarebbe utile allegare la libreria SimpleSAMLPHP ( https://simplesamlphp.org/ ) direttamente al modulo, e fornire una configurazione di default coerente
   - documentazione di riferimento:
@@ -44,22 +51,21 @@
 /**
  * Implements hook_menu().
  */
-function spid_auth_menu()
-{
+function spid_pasw_menu() {
     $items = array();
 
-    $items['admin/config/people/spid_auth'] = array(
-        'title' => 'Configurazioni SPID Auth',
+    $items['admin/config/people/spid_pasw'] = array( //@PASW
+        'title' => 'Configurazioni SPID pasw',
         'description' => 'Controlla le diverse configurazioni del modulo di autenticazione SPID',
         'page callback' => 'drupal_get_form',
-        'page arguments' => array('spid_auth_settings'),
+        'page arguments' => array('spid_pasw_settings'),
         'access arguments' => array('amministra autenticazione SPID'),
         'type' => MENU_LOCAL_TASK | MENU_NORMAL_ITEM,
     );
     $items['saml_login'] = array(
         'title' => 'Logon to the site',
         'description' => 'Provides a site login page',
-        'page callback' => 'spid_auth_loginpage',
+        'page callback' => 'spid_pasw_loginpage',
         'access callback' => TRUE,
         'type' => MENU_CALLBACK,
     );
@@ -67,18 +73,11 @@ function spid_auth_menu()
     $items['saml_logout'] = array(
         'title' => 'Logout to the site',
         'description' => 'Provides a site logout page',
-        'page callback' => 'spid_auth_logoutpage',
+        'page callback' => 'spid_pasw_logoutpage',
         'access callback' => TRUE,
         'type' => MENU_CALLBACK,
     );
 
-    $items['saml_error'] = array(
-        'title' => 'Authentication error page',
-        'description' => 'Provides a login error page',
-        'page callback' => 'spid_auth_errorpage',
-        'access callback' => TRUE,
-        'type' => MENU_CALLBACK,
-    );
 
     return $items;
 }
@@ -86,19 +85,36 @@ function spid_auth_menu()
 /**
  * Implements hook_admin_paths().
  */
-function spid_auth_admin_paths()
-{
-    return array('admin/config/people/spid_auth' => TRUE);
+function spid_pasw_admin_paths() {
+    return array('admin/config/people/spid_pasw' => TRUE); //@PASW
+}
+
+/**
+ * Implements hook_page_build
+ * @PASW aggiunge il bottone SPID alla pagina di login
+ * 
+ */
+function spid_pasw_page_build(&$page) {
+	global $user;
+	static $count = 0;
+	if (arg(0) == 'user' && $user->uid == 0 && $count == 0 && _spid_pasw_isEnabled()) {
+		$page['content']['spid'] = array (
+			'#markup' => '<strong>oppure</strong>&nbsp;' . _spid_pasw_spidbutton(),
+			'#weight' => 200,
+		);
+		$count++;
+	}
 }
 
 /**
  * Implements hook_help().
+ * @PASW
+ * 
  */
-function spid_auth_help($path, $arg)
-{
+function spid_pasw_help($path, $arg) {
     switch ($path) {
-        case 'admin/config/people/spid_auth':
-            $output = t('<p>Questo modulo integra il protocollo di autenticazione SPID in Drupal</p>');
+        case 'admin/config/people/spid_pasw':
+            $output = t('<p>Questo modulo integra il protocollo di autenticazione SPID in Drupal PASW</p>');
             $output .= t('<p></p>');
             return $output;
     }
@@ -107,10 +123,9 @@ function spid_auth_help($path, $arg)
 /**
  * Implements hook_permission().
  */
-function spid_auth_permission()
-{
+function spid_pasw_permission() {
     return array(
-        'amministra autenticazione SPID' => array(
+        'amministra autenticazione SPID' => array( //@PASW
             'title' => t('Amministra autenticazione SPID'),
             'description' => t('Warning: Give to trusted roles only; this permission has security implications.'),
         ),
@@ -118,23 +133,13 @@ function spid_auth_permission()
 }
 
 /**
- * Represents the Drupal page (saml_error). 
- */
-function spid_auth_errorpage()
-{
-    drupal_set_message(check_plain(t("An authentication error has occurred")));
-    drupal_goto('<front>');
-}
-
-/**
  * Represents the Drupal page (saml_logout). 
  */
-function spid_auth_logoutpage()
-{
+function spid_pasw_logoutpage() {
 
     $state = SimpleSAML_Auth_State::loadState((string) $_REQUEST['LogoutState'], 'MyLogoutState');
 
-    $ls = (isset($state['saml:sp:LogoutStatus']) ? $state['saml:sp:LogoutStatus'] : false); /* Only works for SAML SP */
+    $ls = (isset($state['saml:sp:LogoutStatus'])?$state['saml:sp:LogoutStatus']:false); /* Only works for SAML SP */
     if ($ls && $ls['Code'] === 'urn:oasis:names:tc:SAML:2.0:status:Success' && !isset($ls['SubCode'])) {
         /* Successful logout. */
         $msg = t("You have been logged out.");
@@ -149,8 +154,7 @@ function spid_auth_logoutpage()
 /**
  * Represents the Drupal page (saml_login), which triggers user authentication against the SimpleSAMLphp service provider.
  */
-function spid_auth_loginpage()
-{
+function spid_pasw_loginpage() {
 
     global $user;
     global $base_url;
@@ -159,7 +163,7 @@ function spid_auth_loginpage()
     $fail = NULL;
     $output = NULL;
 
-    if (!_spid_auth_isEnabled()) {
+    if (!_spid_pasw_isEnabled()) {
         // Exit without initializing.
         drupal_set_message(t('We\'re sorry this feature is not yet enabled.'));
 
@@ -171,13 +175,13 @@ function spid_auth_loginpage()
 
     // Make sure phpsession is NOT being used.
     if ($configStoreType == 'phpsession') {
-        watchdog('spid_auth', 'A user attempted to login using simplesamlphp but the store.type is phpsession, use memcache or sql for simplesamlphp session storage. See: simplesamlphp/config/config.php.', NULL, WATCHDOG_WARNING);
+        watchdog('spid_pasw', 'A user attempted to login using simplesamlphp but the store.type is phpsession, use memcache or sql for simplesamlphp session storage. See: simplesamlphp/config/config.php.', NULL, WATCHDOG_WARNING);
         $fail = TRUE;
     }
 
     // Make sure there is an instance of SimpleSAML_Auth_Simple.
     if (!$_simplesamlphp_auth_as) {
-        watchdog('spid_auth', 'A user attempted to login using this module but there was a problem.', NULL, WATCHDOG_WARNING);
+        watchdog('spid_pasw', 'A user attempted to login using this module but there was a problem.', NULL, WATCHDOG_WARNING);
         $fail = TRUE;
     }
 
@@ -208,12 +212,13 @@ function spid_auth_loginpage()
 
         if ($returnto) {
             // Set the cookie so we can deliver the user to the place they started
-            setrawcookie('spid_auth_returnto', $returnto, time() + 60 * 60);
+            setrawcookie('spid_pasw_returnto', $returnto, time() + 60 * 60);
             //setrawcookie('SimpleSAMLSessionID', $returnto, time() + 60 * 60);
         }
 
 
-        // Check 
+        // Check
+        // @PASW 
         if ((isset($_REQUEST['infocert_id']) && $_REQUEST['infocert_id'])) {
             $options['saml:idp'] = $_REQUEST['infocert_id'];
         } elseif ((isset($_REQUEST['poste_id']) && $_REQUEST['poste_id'])) {
@@ -224,28 +229,22 @@ function spid_auth_loginpage()
             $options['saml:idp'] = $_REQUEST['sielte_id'];
         } elseif ((isset($_REQUEST['aruba_id']) && $_REQUEST['aruba_id'])) {
             $options['saml:idp'] = $_REQUEST['aruba_id'];
-        } elseif ((isset($_REQUEST['register_id']) && $_REQUEST['register_id'])) {
-            $options['saml:idp'] = $_REQUEST['register_id'];
         } elseif ((isset($_REQUEST['namirial_id']) && $_REQUEST['namirial_id'])) {
             $options['saml:idp'] = $_REQUEST['namirial_id'];
+        } elseif ((isset($_REQUEST['register_id']) && $_REQUEST['register_id'])) {
+            $options['saml:idp'] = $_REQUEST['register_id'];
         } else {
             drupal_set_message(t('We\'re sorry. There was a problem. The issue has been logged for the administrator.'));
             drupal_goto('<front>');
         }
 
         // Require the user to be authenticated.
-        // Last char rapresent Level authentication 
-        $options['saml:AuthnContextClassRef'] = 'https://www.spid.gov.it/SpidL' . variable_get('spid_auth_authlevel', 1);
 
-        $options['saml:AuthnContextComparison'] = "minimum";
-        $options['AuthnContextComparison'] = "minimum";
-
-        /* indicando la url di ritorno, funziona anche dietro reverse proxy */
-        /* se invece si lascia quella di default no */
-
-        $options['ReturnTo'] = url('saml_login', array('absolute' => true));
-        $options['ErrorURL'] = url('saml_error', array('absolute' => true));
-
+		$authformat = variable_get('spid_pasw_authuri', 'https://www.spid.gov.it/%s');
+		$authlevel = variable_get('spid_pasw_authlevel', 'SpidL1');
+        $options['saml:AuthnContextClassRef'] = sprintf($authformat, $authlevel);
+        $options['samlp:RequestedAuthnContext'] = array("Comparison" => "minimum");
+        $options['ErrorURL'] = base_path();
         $_simplesamlphp_auth_as->requireAuth($options);
 
         // If the user is authenticated, send them along.
@@ -254,12 +253,12 @@ function spid_auth_loginpage()
         $gotourl = NULL;
 
         // Check to see if we've set a cookie. If there is one, give it priority.
-        if (isset($_COOKIE['spid_auth_returnto']) && $_COOKIE['spid_auth_returnto']) {
+        if (isset($_COOKIE['spid_pasw_returnto']) && $_COOKIE['spid_pasw_returnto']) {
             // use the cookie for the ReturnTo
-            $gotourl = $_COOKIE['spid_auth_returnto'];
+            $gotourl = $_COOKIE['spid_pasw_returnto'];
 
             // unset the cookie
-            setrawcookie('spid_auth_returnto', '');
+            setrawcookie('spid_pasw_returnto', '');
         } elseif ($returnto) {
             $gotourl = $returnto;
         }
@@ -272,27 +271,30 @@ function spid_auth_loginpage()
             drupal_goto('user/' . $user->uid);
         }
     }
+
     return $output;
 }
 
 /**
  * Implements hook_init().
+ * @PASW uso del lock su file per impedire esecuzioni contemporanee del codice
+ * @PASW scrittura accessi nel log
  */
-function spid_auth_init()
-{
+function spid_pasw_init() {
     global $user;
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
     global $_simplesamlphp_auth_saml_config;
     global $_simplesamlphp_auth_saml_version;
-
-    if (!_spid_auth_isEnabled(TRUE)) {
+//	$semaphore = sem_get(111222);
+	
+    if (!_spid_pasw_isEnabled(TRUE)) {
         // Exit without initializing.
         return;
     }
 
     // Get the simplesamlphp session.
-    $basedir = variable_get('spid_auth_installdir', '/var/simplesamlphp');
+    $basedir = variable_get('spid_pasw_installdir', '/var/simplesamlphp');
 
     require_once($basedir . '/lib/_autoload.php');
 
@@ -300,70 +302,91 @@ function spid_auth_init()
     $_simplesamlphp_auth_saml_version = $_simplesamlphp_auth_saml_config->getVersion();
 
     // Load simpleSAMLphp, configuration and metadata.
-    $_simplesamlphp_auth_as = new SimpleSAML_Auth_Simple(variable_get('spid_auth_authsource', 'default-sp'));
+    $_simplesamlphp_auth_as = new SimpleSAML_Auth_Simple(variable_get('spid_pasw_authsource', 'default-sp'));
     $_simplesamlphp_auth_saml_attributes = $_simplesamlphp_auth_as->getAttributes();
 
+	$file = fopen(file_directory_temp()."/spidcheck","w+");
+	flock($file,LOCK_EX);
+	//sem_acquire($semaphore);
+	
     if ($user->uid == 0) {
         // User is not logged in to Drupal.
         if ($_simplesamlphp_auth_as->isAuthenticated()) {
             // User is logged in - SimpleSAMLphp (but not Drupal).
             // Get unique identifier from saml attributes.
 
-            $authname = _spid_auth_get_authname();
+            $authname = _spid_pasw_get_authname();
 
             _simplesaml_auth_debug(t('Authname is [%authname] userid is [%uid]', array('%authname' => $authname, '%uid' => $user->uid)));
 
             if (!empty($authname)) {
                 // User is logged in with SAML authentication and we got the unique identifier.
                 // Try to log into Drupal.
+                SimpleSAML_Logger::alert('Utente ' . $authname . ' (' . _spid_pasw_get_fiscal_number(0) . ') autenticato via SPID');
                 _simplesaml_auth_debug(t('Load user [%authname]', array('%authname' => $authname)));
 
-                // Retrieve user mapping and attempt to log the user in.
-                $ext_user = user_external_load($authname);
+                // Retrieve user by name and attempt to log the user in.
+                $ext_user = user_load_by_name($authname);
 
                 if (!$ext_user) {
                     // First we check the admin settings for simpleSAMLphp and find out if we are allowed to register users.
-                    if (variable_get('spid_auth_registerusers', TRUE)) {
+                    if (variable_get('spid_pasw_registerusers', TRUE)) {
 
                         // We are allowed to register new users.
                         _simplesaml_auth_debug(t('Register [%authname]', array('%authname' => $authname)));
 
-                        user_external_login_register($authname, 'spid_auth');
+                        user_external_login_register($authname, 'spid_pasw');
 
                         if ($user) {
                             // Populate roles based on configuration setting.
-                            $roles = _spid_auth_rolepopulation(variable_get('spid_auth_rolepopulation', ''));
-                            $userinfo = array('roles' => $roles);
-                            $user = user_save($user, $userinfo); // @todo - Fjernet rolle-delen her da den gav en bra feilmelding når roller ikke finnes ;)
-                        }
+                            $roles = _spid_pasw_rolepopulation(variable_get('spid_pasw_rolepopulation', ''));
+                            $userinfo = array(
+								'roles' => $roles,
+							);
+							// @PASW @TODO impedire l'esecuzione del codice seguente se non si trovano i campi
+                            $user->field_cognome[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['familyName'][0];
+                            $user->field_nome[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['name'][0];
+                            $user->field_codice_fiscale[LANGUAGE_NONE][0]['value'] = substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0], 6);
+							if (isset($_simplesamlphp_auth_saml_attributes['dateOfBirth'])) {
+								$ar1 = explode('-', $_simplesamlphp_auth_saml_attributes['dateOfBirth'][0]);
+								$ar2 = array($ar1[2], $ar1[1], $ar1[0]);
+								$user->field_data_di_nascita[LANGUAGE_NONE][0]['value'] = implode('/', $ar2);
+							}
+							if (isset($_simplesamlphp_auth_saml_attributes['placeOfBirth']))
+								$user->field_luogo_di_nascita[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['placeOfBirth'][0];
+							if (isset($_simplesamlphp_auth_saml_attributes['countyOfBirth']))
+								$user->field_provincia_di[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['countyOfBirth'][0];
+                            $user = user_save($user, $userinfo); // @todo - Fjernet rolle-delen her da den gav en bra feilmelding n�r roller ikke finnes ;)
+                       }
                     } else {
                         // We are not allowed to register new users on the site through simpleSAML.
                         // We let the user know about this and redirect to the user/login page.
                         $msg = t("We are sorry. While you have successfully authenticated, you are not yet entitled to access this site. Please ask the site administrator to provision access for you.");
                         drupal_set_message(check_plain($msg));
+						//sem_release($semaphore);
+						flock($file,LOCK_UN);fclose($file);
                         $_simplesamlphp_auth_as->logout(base_path());
+						return;
                     }
                 } else {
                     // If successfully logged into Drupal.
                     // See if we're supposed to re-evaluate role assignments.
 
-                    if (variable_get('spid_auth_roleevaleverytime', 0)) {
-                        // If the user is already registered...
-                        // Update the roles.
-                        // Populate roles based on configuration setting.
-                        _simplesaml_auth_debug(t('User already registered [%authname] updating roles.', array('%authname' => $authname)));
-                        $roles = _spid_auth_rolepopulation(variable_get('spid_auth_rolepopulation', ''));
-                        $userinfo = array('roles' => $roles);
-
-                        // Save the updated roles and populate the user object.
-                        $user = user_save($ext_user, $userinfo);
-                    } else {
-                        // No need to evaluate roles, populate the user object.
-                        $user = $ext_user;
+                    /* removed roles re-evaluation */
+                    // No need to evaluate roles, populate the user object.
+                    // don't login if user disabled
+                    if ($ext_user->status == 0) {
+                        drupal_set_message('utente disabilitato');
+						SimpleSAML_Logger::alert('Utente disabilitato ' . $authname . ' autenticato ma non loggato');
+						//sem_release($semaphore);
+						flock($file,LOCK_UN);fclose($file);
+                        $_simplesamlphp_auth_as->logout(base_path());
+                        return;
                     }
+                    $user = $ext_user;
 
                     if (module_exists('rules')) {
-                        rules_invoke_event('spid_auth_rules_event_login', $user);
+                        rules_invoke_event('spid_pasw_rules_event_login', $user);
                     }
                 }
 
@@ -372,68 +395,19 @@ function spid_auth_init()
                 user_login_finalize($edit);
             } // End if !empty authname.
         } // End if isset saml_session.
-    } else {
-        // The user is already logged into Drupal.
-        // If we forbid users from logging in using local accounts.
-        if (FALSE == variable_get('spid_auth_allowdefaultlogin', TRUE)) {
-            // If the user has NOT been authenticated via simpleSAML...
-            if (!$_simplesamlphp_auth_as->isAuthenticated()) {
-                // :FYI: Until Drupal issue #754560 is corrected this message will never be seen by the user.
-                drupal_set_message(t("We are sorry, users are not permitted to log in using local accounts."));
-                // Destroy the user's session (log them out).
-                _spid_auth_destroy_drupal_session();
-            }
-        } else {
-            // If we are allowing users to log in with local accounts.
-            // If the user has NOT been authenticated via simpleSAML.
-            if (!$_simplesamlphp_auth_as->isAuthenticated()) {
-
-                // See if we limit this privilege to specified users
-                $strAllwDefLogUsers = variable_get('spid_auth_allowdefaultloginusers', '');
-                $arrAllwDefLogUsers = array();
-                // See if we limit this privilege to specified roles.
-                $arrAllwDefLogRoles = variable_get('spid_auth_allowdefaultloginroles', FALSE);
-
-                // If user IDs or roles are specified, we let them in, but everyone else gets logged out.
-                if (drupal_strlen($strAllwDefLogUsers) || $arrAllwDefLogRoles) {
-
-                    // Convert the string into an array.
-                    // @todo Perform a test to make sure that only numbers, spaces, or commas are in the string.
-                    $arrAllwDefLogUsers = explode(',', $strAllwDefLogUsers);
-
-                    // If we still have something to work with.
-                    if (0 < count($arrAllwDefLogUsers) || 0 < count($arrAllwDefLogRoles)) {
-                        /* Log the user out of Drupal if:
-                          1) the current user's uid is NOT in the list of allowed uids...
-                          2) or their role does not match and allowed mixed mode role. */
-                        $matchRoles = array_intersect(array_keys($user->roles), $arrAllwDefLogRoles);
-                        if (!in_array($user->uid, $arrAllwDefLogUsers) && count($matchRoles) == 0) {
-                            // User is logged into Drupal, but may not be logged into simpleSAML.
-                            // If this is the case we're supposed to log the user out of Drupal.
-                            // :FYI: Until Drupal issue #754560 is corrected this message will never be seen by the user.
-                            drupal_set_message(t("We are sorry, you are not permitted to log in using a local account."));
-
-                            // The least we can do is write something to the watchdog so someone will know what's happening.
-                            watchdog('spid_auth', 'User %name not authorized to log in using local account.', array('%name' => $user->name));
-
-                            _spid_auth_destroy_drupal_session();
-                        }
-                    }
-                } // Test for specified users.
-            } // End if $_simplesamlphp_auth_as->isAuthenticated().
-        } // End test to see if we allow default logins.
     } // End if user->uid.
+	//sem_release($semaphore);
+	flock($file,LOCK_UN);fclose($file);
 }
 
 /**
  * Implements hook_user_insert().
  */
-function spid_auth_user_insert(&$edit, $account, $category = NULL)
-{
+function spid_pasw_user_insert(&$edit, $account, $category = NULL) {
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
 
-    if (!_spid_auth_isEnabled()) {
+    if (!_spid_pasw_isEnabled()) {
         // Exit without initializing.
         return;
     }
@@ -441,13 +415,14 @@ function spid_auth_user_insert(&$edit, $account, $category = NULL)
     if ($category == 'account') {
         // If user registration has a valid session...
         if ($_simplesamlphp_auth_as->isAuthenticated()) {
+			/* @PASW removed code
             // Get name from default attributes.
             try {
                 _simplesaml_auth_debug(t('Registering user [%acctname]', array('%acctname' => $account->name)));
-                $account->name = _spid_auth_get_fiscal_number($account->uid);
+                $account->name = _spid_pasw_get_fiscal_number($account->uid);
             } catch (Exception $e) {
                 drupal_set_message(t('Your user name was not provided by your identity provider (IDP).'), "error");
-                watchdog('spid_auth', $e->getMessage(), NULL, WATCHDOG_CRITICAL);
+                watchdog('spid_pasw', $e->getMessage(), NULL, WATCHDOG_CRITICAL);
             }
 
             db_update('users')
@@ -456,13 +431,13 @@ function spid_auth_user_insert(&$edit, $account, $category = NULL)
                     ->execute();
 
             _simplesaml_auth_debug(t('Updating username [%acctname]', array('%acctname' => $account->name)));
-
+			*/
             // Get mail from default attribute.
             try {
-                $mail_address = _spid_auth_get_mail();
+                $mail_address = _spid_pasw_get_mail();
             } catch (Exception $e) {
                 drupal_set_message(t('Your e-mail address was not provided by your identity provider (IDP).'), "error");
-                watchdog('spid_auth', $e->getMessage(), NULL, WATCHDOG_CRITICAL);
+                watchdog('spid_pasw', $e->getMessage(), NULL, WATCHDOG_CRITICAL);
             }
 
             if (!empty($mail_address)) {
@@ -473,7 +448,7 @@ function spid_auth_user_insert(&$edit, $account, $category = NULL)
             }
 
             if (module_exists('rules')) {
-                rules_invoke_event('spid_auth_rules_event_register', $account);
+                rules_invoke_event('spid_pasw_rules_event_register', $account);
             }
 
             _simplesaml_auth_debug(t('Updating mail [%mailaddr]', array('%mailaddr' => $mail_address)));
@@ -484,26 +459,29 @@ function spid_auth_user_insert(&$edit, $account, $category = NULL)
 /**
  * Implements hook_user_logout().
  */
-function spid_auth_user_logout($account)
-{
+function spid_pasw_user_logout($account) {
     global $user;
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
     global $base_url;
 
+	//$idp = $_simplesamlphp_auth_as->getAuthData('saml:sp:IdP');
+	
     if (!empty($_simplesamlphp_auth_saml_attributes)) {
 
-        $config = SimpleSAML_Configuration::getInstance();
+        SimpleSAML_Logger::alert("Logout SPID dell'utente $user->name");
+
+        //$config = SimpleSAML_Configuration::getInstance();
 
         // :KLUDGE: for some reason Drupal is not killing the session, even if I were to call drupal_session_destroy_uid() here.
         session_destroy();
 
-        $gotourl = base_path();
-
-        if (variable_get('spid_auth_logoutgotourl', '')) {
-            $gotourl = variable_get('spid_auth_logoutgotourl', '');
+        /*
+		$gotourl = base_path();
+        if (variable_get('spid_pasw_logoutgotourl', '')) {
+            $gotourl = variable_get('spid_pasw_logoutgotourl', '');
         }
-
+		*/
         $_simplesamlphp_auth_as->logout(array(
             'ReturnTo' => url('saml_logout'),
             'ReturnStateParam' => 'LogoutState',
@@ -514,8 +492,7 @@ function spid_auth_user_logout($account)
 /**
  * Implements hook_user_delete().
  */
-function spid_auth_user_delete($account)
-{
+function spid_pasw_user_delete($account) {
     db_delete('authmap')
             ->condition('uid', $account->uid)
             ->condition('authname', $account->name)
@@ -523,177 +500,179 @@ function spid_auth_user_delete($account)
 }
 
 /**
- * Implements settings for the module.
+ * @PASW rileva percorso libreria installata con installatore specifico
+ * 
  */
-function spid_auth_settings()
+function _spid_pasw_get_lib_path()
 {
+	$result = '/var/simplesamlphp';
+	$orig = getcwd();
+	$root = $_SERVER['DOCUMENT_ROOT'];
+	chdir ($root);
+	if (file_exists('simplespidphp')) {
+		chdir('simplespidphp');
+		$result = getcwd();
+	} else if (is_writable('..') && file_exists('../simplespidphp')) {
+		chdir('../simplespidphp');
+		$result = getcwd();
+	}
+	chdir($orig);
+	return $result;
+}
+
+/**
+ * Implements settings for the module.
+ * @PASW inserite specifiche per SPID e libreria
+ * 
+ */
+function spid_pasw_settings() {
     global $_simplesamlphp_auth_saml_version, $base_url;
 
+	/*
     if (!empty($_simplesamlphp_auth_saml_version)) {
         $ver = explode('.', $_simplesamlphp_auth_saml_version);
         if (!($ver[0] >= 1 && $ver[1] >= 5)) {
             drupal_set_message(t("Please upgrade SimpleSAMLphp. You are using %ssp_version", array('%ssp_version' => $_simplesamlphp_auth_saml_version)), 'warning');
         }
     }
+	*/
 
     $roles = user_roles(TRUE);
 
-    $form['spid_auth_grp_setup'] = array(
+    $form['spid_pasw_grp_setup'] = array(
         '#type' => 'fieldset',
         '#title' => t('Basic Setup'),
         '#collapsible' => FALSE,
     );
-    $form['spid_auth_grp_setup']['spid_auth_activate'] = array(
+    $form['spid_pasw_grp_setup']['spid_pasw_activate'] = array(
         '#type' => 'checkbox',
         '#title' => t('Attiva autenticazione SPID'),
-        '#default_value' => variable_get('spid_auth_activate', FALSE),
-        '#description' => t('Checking this box before configuring the module could lock you out of Drupal.'),
+        '#default_value' => variable_get('spid_pasw_activate', FALSE),
+        '#description' => t('Spuntare per attivare il funzionamento del modulo.'),
     );
-    /*     * *********************************
-      Nota di Bob: allegando la libreria in oggetto al modulo stesso, si può evitare di chiedere questi dettagli tecnici
-     */
-    $form['spid_auth_grp_setup']['spid_auth_installdir'] = array(
+
+	$default_lib_path = _spid_pasw_get_lib_path();
+    $form['spid_pasw_grp_setup']['spid_pasw_installdir'] = array(
         '#type' => 'textfield',
-        '#title' => t('Installation directory (default: /var/simplesamlphp)'),
-        '#default_value' => variable_get('spid_auth_installdir', '/var/simplesamlphp'),
-        '#description' => t('The base directory of simpleSAMLphp. Absolute path with no trailing slash.'),
+        '#title' => t('Directory della libreria (default: '.$default_lib_path.')'),
+        '#default_value' => variable_get('spid_pasw_installdir', $default_lib_path),
+        '#description' => t('Cartella della libreria. Percorso assoluto senza slash finale.<br>IMPORTANTE: se la libreria &egrave; installata correttamente deve comparire in automatico il valore appropriato.'),
     );
-    $form['spid_auth_grp_setup']['spid_auth_authsource'] = array(
-        '#type' => 'textfield',
+
+    $form['spid_pasw_grp_setup']['spid_pasw_authlevel'] = array(
+        '#type' => 'radios',
+        '#title' => t('Livello di autenticazione SPID'),
+        '#default_value' => variable_get('spid_pasw_authlevel', 'SpidL1'),
+        '#description' => t('Autenticazione livello 1 o 2'),
+		'#options' => array(
+			'SpidL1' => 'Livello 1',
+			'SpidL2' => 'Livello 2',
+		),
+    );
+
+    $form['spid_pasw_grp_setup']['spid_pasw_authuri'] = array(
+        '#type' => 'radios',
+        '#title' => t('URI di autenticazione SPID'),
+        '#default_value' => variable_get('spid_pasw_authuri', 'https://www.spid.gov.it/%s'),
+        '#description' => t('Autenticazione corretta o obsoleta (da provare se la prima non funziona)'),
+		'#options' => array(
+			'https://www.spid.gov.it/%s' => 'Autenticazione corretta',
+			'urn:oasis:names:tc:SAML:2.0:ac:classes:%s' => 'Autenticazione obsoleta',
+		),
+    );
+
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource'] = array(
+        '#type' => 'hidden',
         '#title' => t('Authenticaton source for this SP (default: default-sp)'),
         '#default_value' => variable_get('spid_auth_authsource', 'default-sp'),
         '#description' => t('The name of the source to use from /var/simplesamlphp/config/authsources.php'),
     );
-    $form['spid_auth_grp_setup']['spid_auth_authlevel'] = array(
-        '#type' => 'radios',
-        '#title' => t('Authenticaton level for this SP (default: default-sp)'),
-        '#default_value' => variable_get('spid_auth_authlevel', 1),
-        '#description' => t('Authentication level used'),
-        '#options' => array(
-            1 => 1,
-            2 => 2,
-            3 => 3)
+
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_infocert'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for Infocert'),
+        '#default_value' => variable_get('spid_pasw_authsource_infocert', 'https://identity.infocert.it'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_poste'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for Poste'),
+        '#default_value' => variable_get('spid_pasw_authsource_poste', 'https://posteid.poste.it'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_tim'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for Tim'),
+        '#default_value' => variable_get('spid_pasw_authsource_tim', 'https://login.id.tim.it/affwebservices/public/saml2sso'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_sielte'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for Sielte'),
+        '#default_value' => variable_get('spid_pasw_authsource_sielte', 'identity.sieltecloud.it'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_aruba'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for Aruba'),
+        '#default_value' => variable_get('spid_pasw_authsource_aruba', 'https://loginspid.aruba.it'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_namirial'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for Namirial'),
+        '#default_value' => variable_get('spid_pasw_authsource_namirial', 'https://idp.namirialtsp.com/idp'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_italia'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for SpidItalia'),
+        '#default_value' => variable_get('spid_pasw_authsource_italia', 'https://spid.register.it'),
     );
 
-
-    $form['spid_auth_grp_setup']['spid_auth_authsource_infocert'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Infocert'),
-        '#default_value' => variable_get('spid_auth_authsource_infocert'),
-        '#description' => t('The name of the infocert_id from /var/simplesamlphp/config/authsources.php'),
-    );
-    $form['spid_auth_grp_setup']['spid_auth_authsource_poste'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Poste'),
-        '#default_value' => variable_get('spid_auth_authsource_poste'),
-        '#description' => t('The name of the poste_id from /var/simplesamlphp/config/authsources.php'),
-    );
-    $form['spid_auth_grp_setup']['spid_auth_authsource_tim'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Tim'),
-        '#default_value' => variable_get('spid_auth_authsource_tim'),
-        '#description' => t('The name of the tim_id from /var/simplesamlphp/config/authsources.php'),
-    );
-    $form['spid_auth_grp_setup']['spid_auth_authsource_sielte'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Sielte'),
-        '#default_value' => variable_get('spid_auth_authsource_sielte'),
-        '#description' => t('The name of the sielte_id from /var/simplesamlphp/config/authsources.php'),
-    );
-
-    $form['spid_auth_grp_setup']['spid_auth_authsource_aruba'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Aruba'),
-        '#default_value' => variable_get('spid_auth_authsource_aruba'),
-        '#description' => t('The name of the aruba_id from /var/simplesamlphp/config/authsources.php'),
-    );
-    $form['spid_auth_grp_setup']['spid_auth_authsource_register'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Register'),
-        '#default_value' => variable_get('spid_auth_authsource_register'),
-        '#description' => t('The name of the register_id from /var/simplesamlphp/config/authsources.php'),
-    );
-    $form['spid_auth_grp_setup']['spid_auth_authsource_namirial'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Autenticaton id for Namirial'),
-        '#default_value' => variable_get('spid_auth_authsource_namirial'),
-        '#description' => t('The name of the namirial_id from /var/simplesamlphp/config/authsources.php'),
-    );
-
-
-    $form['spid_auth_grp_setup']['spid_auth_forcehttps'] = array(
+    $form['spid_pasw_grp_setup']['spid_pasw_forcehttps'] = array(
         '#type' => 'checkbox',
-        '#title' => t('Force https for login links'),
-        '#default_value' => variable_get('spid_auth_forcehttps', TRUE),
-        '#description' => t('Should be enabled on production sites.'),
+        '#title' => t('Forzare https'),
+        '#default_value' => variable_get('spid_pasw_forcehttps', TRUE),
+        '#description' => t('Va attivato nei siti in produzione.'),
     );
 
-    $form['spid_auth_grp_user'] = array(
-        '#type' => 'fieldset',
+    $form['spid_pasw_grp_user'] = array(
+        '#type' => 'hidden', // fieldset
         '#title' => t('User Info and Syncing'),
         '#collapsible' => FALSE,
     );
-    $form['spid_auth_grp_user']['spid_auth_rolepopulation'] = array(
+    $form['spid_pasw_grp_user']['spid_pasw_rolepopulation'] = array(
         '#type' => 'textarea',
         '#title' => t('Automatic role population from simpleSAMLphp attributes'),
-        '#default_value' => variable_get('spid_auth_rolepopulation', ''),
+        '#default_value' => variable_get('spid_pasw_rolepopulation', ''),
         '#description' => t('A pipe separated list of rules.<br />Example: <i>roleid1:condition1|roleid2:contition2...</i> <br />For instance: <i>4:all;1:eduPersonPrincipalName,@=,uninett.no;affiliation,=,employee|2:mail,=,andreas@uninett.no</i>'),
     );
-    $form['spid_auth_grp_user']['spid_auth_roleevaleverytime'] = array(
+    $form['spid_pasw_grp_user']['spid_pasw_roleevaleverytime'] = array(
         '#type' => 'checkbox',
         '#title' => t('Reevaluate roles every time the user logs in.'),
-        '#default_value' => variable_get('spid_auth_roleevaleverytime', 0),
+        '#default_value' => variable_get('spid_pasw_roleevaleverytime', 0),
         '#description' => t('NOTE: This means users could loose any roles that have been assigned manually in Drupal.'),
     );
 
-    $form['spid_auth_grp_reg'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('User Provisioning'),
+    $form['spid_pasw_grp_reg'] = array(
+        '#type' => 'fieldset', // fieldset
+        '#title' => t('Approvvigionamento utenti'),
         '#collapsible' => TRUE,
-        '#collapsed' => TRUE,
+        '#collapsed' => FALSE,
     );
-    $form['spid_auth_grp_reg']['spid_auth_registerusers'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Register users (i.e., auto-provisioning)'),
-        '#default_value' => variable_get('spid_auth_registerusers', TRUE),
-        '#description' => t('Determines wether or not the module should automatically create/register new Drupal accounts for users that authenticate using SimpleSAMLphp. Unless you\'ve done some custom work to provision Drupal accounts with the necessary authmap entries you will want this checked.<br /><br />NOTE: If unchecked each user must already have been provisioned a Drupal account with an appropriate entry in the authmap table before logging in. Otherwise they will receive a notice and be denied access. Be aware that simply creating a Drupal account will not create the necessary entry in the authmap table.'),
+    $form['spid_pasw_grp_reg']['spid_pasw_registerusers'] = array(
+        '#type' => 'checkbox', //checkbox
+        '#title' => t('Registra nuovi utenti'),
+        '#default_value' => variable_get('spid_pasw_registerusers', TRUE),
+        '#description' => t('Determina se il modulo deve o no creare un nuovo account Drupal per gli utenti con un codice fiscale non gi&agrave; presente.<br /><br />NOTA: Se non spuntato perch&eacute; un utente possa accedere deve esistere un account Drupal con specificato il suo codice fiscale.'),
     );
 
-    $form['spid_auth_grp_auth'] = array(
-        '#type' => 'fieldset',
+    $form['spid_pasw_grp_auth'] = array(
+        '#type' => 'hidden', // fieldset
         '#title' => t('Drupal Authentication'),
         '#collapsible' => TRUE,
         '#collapsed' => TRUE,
     );
 
-    /*     * *********************************
-      Nota di Bob: questa possibilità penso che debba essere tolta del tutto
-     */
-    $form['spid_auth_grp_auth']['spid_auth_allowdefaultlogin'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Allow authentication with local Drupal accounts'),
-        '#default_value' => variable_get('spid_auth_allowdefaultlogin', TRUE),
-        '#description' => t('Check this box if you want to let people log in with local Drupal accounts (without using simpleSAMLphp). If you want to restrict this privilege to certain users you can enter the Drupal user IDs in the field below.'),
-    );
-    $form['spid_auth_grp_auth']['spid_auth_allowdefaultloginroles'] = array(
-        '#type' => 'select',
-        '#size' => 3,
-        '#options' => $roles,
-        '#multiple' => TRUE,
-        '#title' => t('Which ROLES should be allowed to login with local accounts?'),
-        '#default_value' => variable_get('spid_auth_allowdefaultloginroles', ''),
-        '#description' => t('Roles that should be allowed to login without simpleSAMLphp. Examples are dev/admin roles or guest roles.'),
-    );
-    $form['spid_auth_grp_auth']['spid_auth_allowdefaultloginusers'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Which users should be allowed to login with local accounts?'),
-        '#default_value' => variable_get('spid_auth_allowdefaultloginusers', ''),
-        '#description' => t('Example: <i>1,2,3</i><br />A comma-separated list of user IDs that should be allowed to login without simpleSAMLphp. If left blank, all local accounts can login.'),
-    );
-    $form['spid_auth_grp_auth']['spid_auth_logoutgotourl'] = array(
+    $form['spid_pasw_grp_auth']['spid_pasw_logoutgotourl'] = array(
         '#type' => 'textfield',
         '#title' => t('Optionally, specify a URL for users to go to after logging out'),
-        '#default_value' => variable_get('spid_auth_logoutgotourl', ''),
+        '#default_value' => variable_get('spid_pasw_logoutgotourl', ''),
         '#description' => t('Example: ' . $base_url),
     );
 
@@ -703,10 +682,9 @@ function spid_auth_settings()
 /**
  * Implements hook_block_view().
  */
-function spid_auth_block_view($delta = '')
-{
+function spid_pasw_block_view($delta = '') {
 
-    if (!_spid_auth_isEnabled()) {
+    if (!_spid_pasw_isEnabled()) {
         // Exit without executing.
         return;
     }
@@ -714,7 +692,7 @@ function spid_auth_block_view($delta = '')
     switch ($delta) {
         case 0:
             $block = array('subject' => '',
-                'content' => _spid_auth_generate_block_text());
+                'content' => _spid_pasw_generate_block_text());
             break;
     }
     return $block;
@@ -723,8 +701,7 @@ function spid_auth_block_view($delta = '')
 /**
  * Implements hook_block_info().
  */
-function spid_auth_block_info()
-{
+function spid_pasw_block_info() {
     $block = array(
         array(
             'info' => t('simpleSAMLphp authentication'),
@@ -747,26 +724,25 @@ function spid_auth_block_info()
  * @return
  *   TRUE/FALSE
  */
-function _spid_auth_isEnabled($bShowInactiveMsg = FALSE)
-{
+function _spid_pasw_isEnabled($bShowInactiveMsg = FALSE) {
     GLOBAL $user;
 
     $failure = NULL;
-    $isActivated = variable_get('spid_auth_activate');
-    $basedir = variable_get('spid_auth_installdir', '/var/simplesamlphp');
+    $isActivated = variable_get('spid_pasw_activate');
+    $basedir = variable_get('spid_pasw_installdir', '/var/simplesamlphp');
 
     if (!$isActivated) {
-        $adminPath = array_keys(spid_auth_admin_paths());
-        $failure = t('L\'autenticazione SPID non è ancora stata attivita. Può essere attivata dalla ' . l('pagina di configurazione', $adminPath[0]) . '.');
+        $adminPath = array_keys(spid_pasw_admin_paths());
+        $failure = t('L\'autenticazione SPID non è ancora stata attivata. Può essere attivata dalla ' . l('pagina di configurazione', $adminPath[0]) . '.');
 
-        watchdog('spid_auth', $failure, NULL, WATCHDOG_WARNING);
+        watchdog('spid_pasw', $failure, NULL, WATCHDOG_WARNING);
     } else {
 
         // Make sure we know where SimpleSAMLphp is.
         if (!file_exists($basedir)) {
-            $failure = t('SimpleSAMLphp could not be found at %basedir . The spid_auth module cannot function until the path to the local SimpleSAMLphp instance is configured.', array('%basedir' => $basedir));
+            $failure = t('SimpleSAMLphp could not be found at %basedir . The spid_pasw module cannot function until the path to the local SimpleSAMLphp instance is configured.', array('%basedir' => $basedir));
 
-            watchdog('spid_auth', $failure, NULL, WATCHDOG_WARNING);
+            watchdog('spid_pasw', $failure, NULL, WATCHDOG_WARNING);
         }
     }
 
@@ -785,6 +761,17 @@ function _spid_auth_isEnabled($bShowInactiveMsg = FALSE)
 }
 
 /**
+ * @param string original string
+ * @return string the input string without accents
+ */   
+function _spid_pasw_remove_unwanted_chars($str)
+{
+  $a = array(' ', chr(0xc0), chr(0xc1), chr(0xc2), chr(0xc3), chr(0xc4), chr(0xc5), chr(0xc6), chr(0xc7), chr(0xc8), chr(0xc9), chr(0xca), chr(0xcb), chr(0xcc), chr(0xcd), chr(0xce), chr(0xcf), chr(0xd0), chr(0xd1), chr(0xd2), chr(0xd3), chr(0xd4), chr(0xd5), chr(0xd6), chr(0xd8), chr(0xd9), chr(0xda), chr(0xdb), chr(0xdc), chr(0xdd), chr(0xdf), chr(0xe0), chr(0xe1), chr(0xe2), chr(0xe3), chr(0xe4), chr(0xe5), chr(0xe6), chr(0xe7), chr(0xe8), chr(0xe9), chr(0xea), chr(0xeb), chr(0xec), chr(0xed), chr(0xee), chr(0xef), chr(0xf1), chr(0xf2), chr(0xf3), chr(0xf4), chr(0xf5), chr(0xf6), chr(0xf8), chr(0xf9), chr(0xfa), chr(0xfb), chr(0xfc), chr(0xfd), chr(0xff), chr(0x41), chr(0x61), chr(0x41), chr(0x61), chr(0x41), chr(0x61), chr(0x43), chr(0x63), chr(0x43), chr(0x63), chr(0x43), chr(0x63), chr(0x43), chr(0x63), chr(0x44), chr(0x64), chr(0xd0), chr(0x64), chr(0x45), chr(0x65), chr(0x45), chr(0x65), chr(0x45), chr(0x65), chr(0x45), chr(0x65), chr(0x45), chr(0x65), chr(0x47), chr(0x67), chr(0x47), chr(0x67), chr(0x47), chr(0x67), chr(0x47), chr(0x67), chr(0x48), chr(0x68), chr(0x48), chr(0x68), chr(0x49), chr(0x69), chr(0x49), chr(0x69), chr(0x49), chr(0x69), chr(0x49), chr(0x69), chr(0x49), chr(0x69), chr(0x3f), chr(0x3f), chr(0x4a), chr(0x6a), chr(0x4b), chr(0x6b), chr(0x4c), chr(0x6c), chr(0x4c), chr(0x6c), chr(0x4c), chr(0x6c), chr(0x3f), chr(0x3f), chr(0x4c), chr(0x6c), chr(0x4e), chr(0x6e), chr(0x4e), chr(0x6e), chr(0x4e), chr(0x6e), chr(0x3f), chr(0x4f), chr(0x6f), chr(0x4f), chr(0x6f), chr(0x4f), chr(0x6f), chr(0xa6), chr(0xb6), chr(0x52), chr(0x72), chr(0x52), chr(0x72), chr(0x52), chr(0x72), chr(0x53), chr(0x73), chr(0x53), chr(0x73), chr(0x53), chr(0x73), chr(0xa9), chr(0xb9), chr(0x54), chr(0x74), chr(0x54), chr(0x74), chr(0x54), chr(0x74), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x57), chr(0x77), chr(0x59), chr(0x79), chr(0xbc), chr(0x5a), chr(0x7a), chr(0x5a), chr(0x7a), chr(0xae), chr(0xbe), chr(0x3f), chr(0x83), chr(0x4f), chr(0x6f), chr(0x55), chr(0x75), chr(0x41), chr(0x61), chr(0x49), chr(0x69), chr(0x4f), chr(0x6f), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x55), chr(0x75), chr(0x3f), chr(0x3f), chr(0x3f), chr(0x3f), chr(0x3f), chr(0x3f));
+  $b = array('_', 'A', 'A', 'A', 'A', 'A', 'A', 'AE', 'C', 'E', 'E', 'E', 'E', 'I', 'I', 'I', 'I', 'D', 'N', 'O', 'O', 'O', 'O', 'O', 'O', 'U', 'U', 'U', 'U', 'Y', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'ae', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y', 'y', 'A', 'a', 'A', 'a', 'A', 'a', 'C', 'c', 'C', 'c', 'C', 'c', 'C', 'c', 'D', 'd', 'D', 'd', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'G', 'g', 'G', 'g', 'G', 'g', 'G', 'g', 'H', 'h', 'H', 'h', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'IJ', 'ij', 'J', 'j', 'K', 'k', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l', 'l', 'l', 'N', 'n', 'N', 'n', 'N', 'n', 'n', 'O', 'o', 'O', 'o', 'O', 'o', 'OE', 'oe', 'R', 'r', 'R', 'r', 'R', 'r', 'S', 's', 'S', 's', 'S', 's', 'S', 's', 'T', 't', 'T', 't', 'T', 't', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'W', 'w', 'Y', 'y', 'Y', 'Z', 'z', 'Z', 'z', 'Z', 'z', 's', 'f', 'O', 'o', 'U', 'u', 'A', 'a', 'I', 'i', 'O', 'o', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'A', 'a', 'AE', 'ae', 'O', 'o');
+  return str_replace($a, $b, $str);
+}
+
+/**
  * Gets the authname attribute from the SAML assertion.
  * Auth_name can't be spidCode because a singol user can have tree SPID authentication 
  * with tree different idp (so he has a single user but tree spidCode) 
@@ -792,21 +779,53 @@ function _spid_auth_isEnabled($bShowInactiveMsg = FALSE)
  * @return
  *   The authname attribute.
  */
-function _spid_auth_get_authname()
-{
+function _spid_pasw_get_authname() {
+    global $_simplesamlphp_auth_saml_attributes;
+	$tmp_user = NULL;
+	if (isset($_simplesamlphp_auth_saml_attributes['fiscalNumber']) == false)
+        throw new Exception(t('error in spid_pasw.module: no valid unique id attribute set'));
+	$fiscal_number = substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0], 6);
+	$query = db_select('field_data_field_codice_fiscale', 'f');
+	$query->condition('field_codice_fiscale_value', $fiscal_number, '=');
+	$query->join('users', 'u', 'f.entity_id = u.uid');
+	$query->fields('u', array('name'));
+	$result = $query->execute();
+	$array = $result->fetchAssoc();
+	$authname = isset($array['name']) ? $array['name'] : '';
+	if ($authname === '') {
+		$i = 0;
+		$newname = '';
+		do {
+			//if ($tmp_user && $tmp_user->field_codice_fiscale[LANGUAGE_NONE][0]['value']==$fiscal_number)
+			//	return NULL;
+			$firstname = $_simplesamlphp_auth_saml_attributes['name'][0];
+			$lastname = $_simplesamlphp_auth_saml_attributes['familyName'][0];
+			$newname = _spid_pasw_remove_unwanted_chars(sprintf("%s.%s", strtolower($lastname), strtolower($firstname)));
+			if ($i > 0) $newname = $newname	. '.' . $i;
+			$i++;
+		} while ($tmp_user = user_load_by_name($newname));
+		$authname = $newname;
+	}
+	return $authname;
+}
+
+//drupal_set_message(_spid_pasw_get_authname());
+
+/*
+function _spid_pasw_get_authname() {
     global $_simplesamlphp_auth_saml_attributes;
 
     $authname = '';
 
     // Check if valid local session exists..
     if (isset($_simplesamlphp_auth_saml_attributes)) {
-        _simplesaml_auth_debug(t('_spid_auth_get_authname: Valid local session exist'));
+        _simplesaml_auth_debug(t('_spid_pasw_get_authname: Valid local session exist'));
         if (isset($_simplesamlphp_auth_saml_attributes['fiscalNumber'])) {
             $authname = $_simplesamlphp_auth_saml_attributes['fiscalNumber'][0];
         } else if (isset($_simplesamlphp_auth_saml_attributes['ivaCode'])) {
             $authname = $_simplesamlphp_auth_saml_attributes['ivaCode'][0];
         } else {
-            throw new Exception(t('error in spid_auth.module: no valid unique id attribute set'));
+            throw new Exception(t('error in spid_pasw.module: no valid unique id attribute set'));
         }
     }
 
@@ -814,6 +833,7 @@ function _spid_auth_get_authname()
 
     return $authname;
 }
+*/
 
 /**
  * Gets the default fiscal number from the SAML assertion.
@@ -821,8 +841,7 @@ function _spid_auth_get_authname()
  * @return
  *   The name attribute.
  */
-function _spid_auth_get_fiscal_number($account)
-{
+function _spid_pasw_get_fiscal_number($account) {
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
 
@@ -854,8 +873,7 @@ function _spid_auth_get_fiscal_number($account)
  * @return
  *   The name attribute.
  */
-function _spid_auth_get_default_name($account)
-{
+function _spid_pasw_get_default_name($account) {
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
 
@@ -885,8 +903,7 @@ function _spid_auth_get_default_name($account)
  * @return
  *   The mail attribute.
  */
-function _spid_auth_get_mail()
-{
+function _spid_pasw_get_mail() {
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
     $mail_address = '';
@@ -895,7 +912,7 @@ function _spid_auth_get_mail()
         if (isset($_simplesamlphp_auth_saml_attributes['email'])) {
             $mail_address = $_simplesamlphp_auth_saml_attributes['email'][0];
         } else {
-            throw new Exception(t('Error in spid_auth.module: No valid mail attribute set.'));
+            throw new Exception(t('Error in spid_pasw.module: No valid mail attribute set.'));
         }
     }
 
@@ -905,9 +922,8 @@ function _spid_auth_get_mail()
 /**
  * Forces HTTPS connections.
  */
-function _spid_auth_forcehttps_rewrite($url)
-{
-    if (variable_get('spid_auth_forcehttps', TRUE)) {
+function _spid_pasw_forcehttps_rewrite($url) {
+    if (variable_get('spid_pasw_forcehttps', TRUE)) {
         $url = str_replace('http://', 'https://', $url);
         _simplesaml_auth_debug('forcehttps rewrite: ' . $url);
     }
@@ -918,23 +934,23 @@ function _spid_auth_forcehttps_rewrite($url)
 /**
  * Generates the text for the log in block.
  */
-function _spid_auth_generate_block_text()
-{
+function _spid_pasw_generate_block_text() {
     global $_simplesamlphp_auth_as;
     $block_content = '';
     global $user;
 
-    if (!_spid_auth_isEnabled()) {
+    if (!_spid_pasw_isEnabled()) {
         // Exit without executing.
         return;
     }
 
     // Check if valid local session exists..
-    if ($_simplesamlphp_auth_as->isAuthenticated() or $user->uid != 0) {
-        $block_content .= '<p>' . t('Logged in as: ') . $user->name . '<br />' . l('Log Out', 'user/logout') . '</a></p>';
+    if ($_simplesamlphp_auth_as->isAuthenticated()) {
+        $block_content .= '<p>Logged in as: ' . $user->name . '<br />' . l('Log Out', 'user/logout') . '</a></p>';
     } else {
+
         //$block_content .= '<p>' . l('Federated Log In', 'saml_login') . '</p>';
-        $block_content .= '<p>' . _spid_auth_spidbutton() . '</p>';
+        $block_content .= '<p>' . _spid_pasw_spidbutton() . '</p>';
     }
 
     return $block_content;
@@ -951,8 +967,7 @@ function _spid_auth_generate_block_text()
  * @return
  *   An array containing role value and the attribute, or FALSE.
  */
-function _spid_auth_evaulaterolerule($roleruleevaluation, $attributes)
-{
+function _spid_pasw_evaulaterolerule($roleruleevaluation, $attributes) {
     _simplesaml_auth_debug(t('Evaluate rule (key=%key,operator=%op,value=%val)', array(
         '%key' => isset($roleruleevaluation[0]) ? $roleruleevaluation[0] : "not set",
         '%op' => isset($roleruleevaluation[1]) ? $roleruleevaluation[1] : "not set",
@@ -993,8 +1008,7 @@ function _spid_auth_evaulaterolerule($roleruleevaluation, $attributes)
  * @return
  *   An array containing user's roles.
  */
-function _spid_auth_rolepopulation($rolemap)
-{
+function _spid_pasw_rolepopulation($rolemap) {
     global $_simplesamlphp_auth_as;
     global $_simplesamlphp_auth_saml_attributes;
     $roles = array();
@@ -1026,7 +1040,7 @@ function _spid_auth_rolepopulation($rolemap)
 
                 $roleruleevaluationdc = explode(',', $roleruleevaluation);
 
-                if (!_spid_auth_evaulaterolerule($roleruleevaluationdc, $attributes)) {
+                if (!_spid_pasw_evaulaterolerule($roleruleevaluationdc, $attributes)) {
                     $addnew = FALSE;
                 }
             }
@@ -1041,16 +1055,15 @@ function _spid_auth_rolepopulation($rolemap)
 }
 
 /**
- * See if the user has an authmap record for spid_auth
+ * See if the user has an authmap record for spid_pasw
  */
-function _simplesaml_auth_user_has_authmap($authname)
-{
+function _simplesaml_auth_user_has_authmap($authname) {
     $authmaps = user_get_authmaps($authname);
 
     $return = 0;
 
     if (is_array($authmaps)) {
-        $return = in_array('spid_auth', array_keys($authmaps));
+        $return = in_array('spid_pasw', array_keys($authmaps));
     }
 
     return $return;
@@ -1059,16 +1072,14 @@ function _simplesaml_auth_user_has_authmap($authname)
 /**
  * This helper function is used by developers to debug the form API workflow in this module.
  */
-function _simplesaml_auth_debug($message)
-{
-    watchdog('spid_auth', $message, NULL, WATCHDOG_DEBUG);
+function _simplesaml_auth_debug($message) {
+    watchdog('spid_pasw', $message, NULL, WATCHDOG_DEBUG);
 }
 
 /**
  * Helper function for logging out a user that is has a active session in Drupal but not with simpleSAML.
  */
-function _spid_auth_destroy_drupal_session()
-{
+function _spid_pasw_destroy_drupal_session() {
     global $user;
 
     watchdog('user', 'Session closed for %name.', array('%name' => $user->name));
@@ -1095,8 +1106,7 @@ function _spid_auth_destroy_drupal_session()
  * @return
  *   TRUE if the current user is authenticated through SAML.  FALSE otherwise.
  */
-function spid_auth_is_authenticated()
-{
+function spid_pasw_is_authenticated() {
     global $_simplesamlphp_auth_as;
 
     // Assume that the user isn't authenticated until proven otherwise.
@@ -1123,8 +1133,7 @@ function spid_auth_is_authenticated()
  *   Otherwise, an array of all attribute values is returned, keyed by
  *   attribute.
  */
-function spid_auth_get_attributes($attribute = NULL)
-{
+function spid_pasw_get_attributes($attribute = NULL) {
     global $_simplesamlphp_auth_saml_attributes;
 
     if (isset($attribute)) {
@@ -1160,51 +1169,48 @@ function spid_auth_get_attributes($attribute = NULL)
  * 
  * Generate the button source code according to AGID specs,
  * using AGID vendor folder.
- * 
+ * @PASW aggiornato con nuovi provider
  * 
  * @return 
  *   A string containing the source code that generate the Login Button 
  */
-function _spid_auth_spidbutton()
-{
+function _spid_pasw_spidbutton() {
+	include(_spid_pasw_get_lib_path().'/metadata/saml20-idp-remote.php');
+	
+    $spid_ico_circle_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-ico-circle-bb.svg';
+    $spid_ico_circle_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-ico-circle-bb.png';
 
-    // la base_url è necessaria in caso di reverse proxy 
+    $spid_idp_infocert_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-infocertid.svg';
+    $spid_idp_infocert_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-infocertid.png';
 
-    $spid_ico_circle_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-ico-circle-bb.svg');
-    $spid_ico_circle_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-ico-circle-bb.png');
+    $spid_idp_timid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-timid.svg';
+    $spid_idp_timid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-timid.png';
 
-    $spid_idp_infocert_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-infocertid.svg');
-    $spid_idp_infocert_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-infocertid.png');
+    $spid_idp_posteid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-posteid.svg';
+    $spid_idp_posteid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-posteid.png';
 
-    $spid_idp_timid_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-timid.svg');
-    $spid_idp_timid_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-timid.png');
+    $spid_idp_sielteid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-sielteid.svg';
+    $spid_idp_sielteid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-sielteid.png';
 
-    $spid_idp_posteid_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-posteid.svg');
-    $spid_idp_posteid_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-posteid.png');
+    $spid_idp_arubaid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-arubaid.svg';
+    $spid_idp_arubaid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-arubaid.png';
 
-    $spid_idp_sielteid_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-sielteid.svg');
-    $spid_idp_sielteid_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-sielteid.png');
+    $spid_idp_namirialid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-namirialid.svg';
+    $spid_idp_namirialid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-namirialid.png';
 
+    $spid_idp_registerid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-spiditalia.svg';
+    $spid_idp_registerid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-spiditalia.png';
 
-    $spid_idp_arubaid_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-arubaid.svg');
-    $spid_idp_arubaid_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-arubaid.png');
+    $infocert_id = variable_get('spid_pasw_authsource_infocert', 'https://identity.infocert.it');
+    $poste_id = variable_get('spid_pasw_authsource_poste', 'https://posteid.poste.it');
+    $tim_id = variable_get('spid_pasw_authsource_tim', 'https://login.id.tim.it/affwebservices/public/saml2sso');
+    $sielte_id = variable_get('spid_pasw_authsource_sielte', 'identity.sieltecloud.it');
+    if (isset($metadata[$sielte_id]) == false) $sielte_id = 'https://' . $sielte_id;
+    $aruba_id = variable_get('spid_pasw_authsource_aruba', 'https://loginspid.aruba.it');
+	$namirial_id = variable_get('spid_pasw_authsource_namirial', 'https://idp.namirialtsp.com/idp');
+	$register_id = variable_get('spid_pasw_authsource_italia', 'https://spid.register.it');
 
-    $spid_idp_registerid_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-spiditalia.svg');
-    $spid_idp_registerid_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-spiditalia.png');
-
-    $spid_idp_namirialid_svg = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-namirialid.svg');
-    $spid_idp_namirialid_png = url(drupal_get_path('module', "spid_auth") . '/vendor/agid/img/spid-idp-namirialid.png');
-
-
-    $infocert_id = variable_get('spid_auth_authsource_infocert');
-    $poste_id = variable_get('spid_auth_authsource_poste');
-    $tim_id = variable_get('spid_auth_authsource_tim');
-    $sielte_id = variable_get('spid_auth_authsource_sielte');
-    $aruba_id = variable_get('spid_auth_authsource_aruba');
-    $register_id = variable_get('spid_auth_authsource_register');
-    $namirial_id = variable_get('spid_auth_authsource_namirial');
-
-    $formaction = url('saml_login', array('absolute' => true));
+    $formaction = url('saml_login');
 
     $spid_bottone = <<<BOTTONE
     <form name="spid_idp_access" action="$formaction" method="post">
@@ -1224,24 +1230,26 @@ function _spid_auth_spidbutton()
                     <button class="idp-button-idp-logo" name="tim_id" type="submit" value="$tim_id"><span class="spid-sr-only">Tim ID</span><img class="spid-idp-button-logo" src="$spid_idp_timid_png" onerror="this.src='$spid_idp_timid_svg'; this.onerror=null;" alt="Tim ID" /></button>
                 </li>
                 <li class="spid-idp-button-link">
-                    <button class="idp-button-idp-logo" name="sielte_id" type="submit" value="$sielte_id"><span class="spid-sr-only">Sielte ID</span><img class="spid-idp-button-logo" src="$spid_idp_sielteid_svg" onerror="this.src='$spid_idp_sielteid_png'; this.onerror=null;" alt="Sielte ID" /></button>
-                </li>             
+                    <button class="idp-button-idp-logo" name="sielte_id" type="submit" value="$sielte_id"><span class="spid-sr-only">Sielte ID</span><img class="spid-idp-button-logo" src="$spid_idp_sielteid_png" onerror="this.src='$spid_idp_sielteid_svg'; this.onerror=null;" alt="Sielte ID" /></button>
+                </li>
                 <li class="spid-idp-button-link">
-                    <button class="idp-button-idp-logo" name="aruba_id" type="submit" value="$aruba_id"><span class="spid-sr-only">Aruba ID</span><img class="spid-idp-button-logo" src="$spid_idp_arubaid_svg" onerror="this.src='$spid_idp_arubaid_png'; this.onerror=null;" alt="Aruba ID" /></button>
-                </li>    
+                    <button class="idp-button-idp-logo" name="aruba_id" type="submit" value="$aruba_id"><span class="spid-sr-only">Aruba ID</span><img class="spid-idp-button-logo" src="$spid_idp_arubaid_png" onerror="this.src='$spid_idp_arubaid_svg'; this.onerror=null;" alt="Aruba ID" /></button>
+                </li>
                 <li class="spid-idp-button-link">
-                    <button class="idp-button-idp-logo" name="register_id" type="submit" value="$register_id"><span class="spid-sr-only">Register ID</span><img class="spid-idp-button-logo" src="$spid_idp_registerid_svg" onerror="this.src='$spid_idp_registerid_png'; this.onerror=null;" alt="Register ID" /></button>
-                </li>  
+                    <button class="idp-button-idp-logo" name="namirial_id" type="submit" value="$namirial_id"><span class="spid-sr-only">Namirial ID</span><img class="spid-idp-button-logo" src="$spid_idp_namirialid_png" onerror="this.src='$spid_idp_namirialid_svg'; this.onerror=null;" alt="Namirial ID" /></button>
+                </li>
                 <li class="spid-idp-button-link">
-                    <button class="idp-button-idp-logo" name="namirial_id" type="submit" value="$namirial_id"><span class="spid-sr-only">Namirial ID</span><img class="spid-idp-button-logo" src="$spid_idp_namirialid_svg" onerror="this.src='$spid_idp_namirialid_png'; this.onerror=null;" alt="Namirial ID" /></button>
-                </li>  
-   
+                    <button class="idp-button-idp-logo" name="register_id" type="submit" value="$register_id"><span class="spid-sr-only">SpidItalia ID</span><img class="spid-idp-button-logo" src="$spid_idp_registerid_png" onerror="this.src='$spid_idp_registerid_svg'; this.onerror=null;" alt="SpidItalia ID" /></button>
+                </li>
                 <li class="spid-idp-support-link">
                     <a href="http://www.spid.gov.it">Maggiori info</a>
                 </li>
                 <li class="spid-idp-support-link">
-                    <a href="http://www.spid.gov.it/richiedi-spid">Non hai SPID?</a>
+                    <a href="http://www.spid.gov.it/#registrati">Non hai SPID?</a>
                 </li>
+            <li class="spid-idp-support-link">
+                <a href="https://www.spid.gov.it/serve-aiuto">Serve aiuto?</a>
+            </li>
             </ul>
         </div>
     </form>
