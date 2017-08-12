@@ -29,18 +29,28 @@ function spid_pasw_uninstall() {
   variable_del('spid_pasw_user_register_original');
 
   // Remove the created system variables.
-  variable_del('spid_pasw_activate');
-  variable_del('spid_pasw_installdir');
-  variable_del('spid_pasw_logout_page');
-  variable_del('spid_pasw_authsource');
-  variable_del('spid_pasw_rolepopulation');
-  variable_del('spid_pasw_roleevaleverytime');
-  variable_del('spid_pasw_forcehttps');
-  variable_del('spid_pasw_registerusers');
-  variable_del('spid_pasw_allowsetdrupalpwd');
-  variable_del('spid_pasw_allowdefaultlogin');
-  variable_del('spid_pasw_allowdefaultloginroles');
-  variable_del('spid_pasw_allowdefaultloginusers');
-  variable_del('spid_pasw_logoutgotourl');
+  @variable_del('spid_pasw_activate');
+  @variable_del('spid_pasw_installdir');
+  @variable_del('spid_pasw_authlevel');
+  @variable_del('spid_pasw_authuri');
+  @variable_del('spid_pasw_authsource_infocert');
+  @variable_del('spid_pasw_authsource_poste');
+  @variable_del('spid_pasw_authsource_tim');
+  @variable_del('spid_pasw_authsource_sielte');
+  @variable_del('spid_pasw_authsource_aruba');
+  @variable_del('spid_pasw_authsource_namirial');
+  @variable_del('spid_pasw_authsource_italia');
+  
+  @variable_del('spid_pasw_logout_page');
+  @variable_del('spid_pasw_authsource');
+  @variable_del('spid_pasw_rolepopulation');
+  @variable_del('spid_pasw_roleevaleverytime');
+  @variable_del('spid_pasw_forcehttps');
+  @variable_del('spid_pasw_registerusers');
+  @variable_del('spid_pasw_allowsetdrupalpwd');
+  @variable_del('spid_pasw_allowdefaultlogin');
+  @variable_del('spid_pasw_allowdefaultloginroles');
+  @variable_del('spid_pasw_allowdefaultloginusers');
+  @variable_del('spid_pasw_logoutgotourl');
 
 }

@@ -582,14 +582,14 @@ function spid_pasw_settings() {
     );
 
     $form['spid_pasw_grp_setup']['spid_pasw_authsource'] = array(
-        '#type' => 'hidden',
+        '#type' => 'hidden', // fieldset
         '#title' => t('Authenticaton source for this SP (default: default-sp)'),
         '#default_value' => variable_get('spid_auth_authsource', 'default-sp'),
         '#description' => t('The name of the source to use from /var/simplesamlphp/config/authsources.php'),
     );
 
     $form['spid_pasw_grp_setup']['spid_pasw_authsource_infocert'] = array(
-        '#type' => 'hidden',
+        '#type' => 'hidden', // textfield
         '#title' => t('Authenticaton id for Infocert'),
         '#default_value' => variable_get('spid_pasw_authsource_infocert', 'https://identity.infocert.it'),
     );
