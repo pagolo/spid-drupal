@@ -22,6 +22,14 @@ Steve Moitozo (creatore modulo SAML originale)
 AGID e Comune di Firenze (modulo SPID-Drupal), in particolare Umberto Rosini e Andrea Manzi
 Referenti tecnici degli IDP Spid, in particolare Gianluca Tovo
 
-IMPORTANTE: il modulo prevede la presenza della libreria simplespidphp installata tramite lo
+IMPORTANTE 1: il modulo è nato per essere utilizzato con pacchetto Drupal-PASW, ma dalla versione
+0.1 è possibile usarlo con qualsiasi configurazione di Drupal. Nella configurarlo si presti
+attenzione alla sezione "OPZIONI AVANZATE", questa sezione, inutile per gli utenti Drupal, permette
+agli altri utenti di configurare il nome utente sul codice fiscale e di impostare o disattivare
+l'uso di campi atti a conservare su Drupal gli attributi SPID. I campi vanno creati a mano e suc-
+cessivamente impostati attraverso la configurazione (se non si vogliono utilizzare basta impostarli
+su "nessun campo").
+
+IMPORTANTE 2: il modulo preferisce la presenza della libreria simplespidphp-pasw installata tramite lo
 script spidinstall scaricabile qui:
 xxxxxxxxxxxxxxxx

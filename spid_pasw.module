@@ -275,6 +275,14 @@ function spid_pasw_loginpage() {
     return $output;
 }
 
+function _spid_pasw_set_field($field,$value) {
+	global $user;
+	if (empty($field) || !property_exists($user, $field))
+		return;
+	$ptr = &$user->$field;
+	$ptr[LANGUAGE_NONE][0]['value'] = $value;
+}
+
 /**
  * Implements hook_init().
  * @PASW uso del lock su file per impedire esecuzioni contemporanee del codice
@@ -343,19 +351,31 @@ function spid_pasw_init() {
                             $userinfo = array(
 								'roles' => $roles,
 							);
-							// @PASW @TODO impedire l'esecuzione del codice seguente se non si trovano i campi
-                            $user->field_cognome[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['familyName'][0];
-                            $user->field_nome[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['name'][0];
-                            $user->field_codice_fiscale[LANGUAGE_NONE][0]['value'] = substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0], 6);
-							if (isset($_simplesamlphp_auth_saml_attributes['dateOfBirth'])) {
+							// @PASW gestione attributi->campi
+							$cognome = variable_get('spid_pasw_lastname','field_cognome');
+							_spid_pasw_set_field($cognome,$_simplesamlphp_auth_saml_attributes['familyName'][0]);
+							$nome = variable_get('spid_pasw_firstname','field_nome');
+							_spid_pasw_set_field($nome,$_simplesamlphp_auth_saml_attributes['name'][0]);
+							$cf = variable_get('spid_pasw_cf','field_codice_fiscale');
+							_spid_pasw_set_field($cf,substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0],6));
+							$date = variable_get('spid_pasw_date','field_data_di_nascita');
+							if (isset($_simplesamlphp_auth_saml_attributes['dateOfBirth'])
+								&& property_exists($user,$date)) {
 								$ar1 = explode('-', $_simplesamlphp_auth_saml_attributes['dateOfBirth'][0]);
 								$ar2 = array($ar1[2], $ar1[1], $ar1[0]);
-								$user->field_data_di_nascita[LANGUAGE_NONE][0]['value'] = implode('/', $ar2);
+								$ptr = &$user->$date;
+								$ptr[LANGUAGE_NONE][0]['value'] = implode('/', $ar2);
 							}
-							if (isset($_simplesamlphp_auth_saml_attributes['placeOfBirth']))
-								$user->field_luogo_di_nascita[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['placeOfBirth'][0];
-							if (isset($_simplesamlphp_auth_saml_attributes['countyOfBirth']))
-								$user->field_provincia_di[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['countyOfBirth'][0];
+							$place = variable_get('spid_pasw_place','field_luogo_di_nascita');
+							if (isset($_simplesamlphp_auth_saml_attributes['placeOfBirth']) && property_exists($user,$place)) {
+								$ptr = &$user->$place;
+								$ptr[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['placeOfBirth'][0];
+							}
+							$prov = variable_get('spid_pasw_province','field_provincia_di');
+							if (isset($_simplesamlphp_auth_saml_attributes['countyOfBirth']) && property_exists($user,$prov)) {
+								$ptr = &$user->$prov;
+								$ptr[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['countyOfBirth'][0];
+							}
                             $user = user_save($user, $userinfo); // @todo - Fjernet rolle-delen her da den gav en bra feilmelding når roller ikke finnes ;)
                        }
                     } else {
@@ -676,6 +696,95 @@ function spid_pasw_settings() {
         '#description' => t('Example: ' . $base_url),
     );
 
+    $form['spid_pasw_grp_adv'] = array(
+        '#type' => 'fieldset', // fieldset
+        '#title' => t('Advanced options'),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+    );
+
+    $form['spid_pasw_grp_adv']['spid_pasw_username_fiscalnumber'] = array(
+        '#type' => 'checkbox', //checkbox
+        '#title' => t('Utilizza il codice fiscale come nome utente'),
+        '#default_value' => variable_get('spid_pasw_username_fiscalnumber', FALSE),
+        '#description' => t('Determina se il nome utente deve coincidere con il codice fiscale.'),
+    );
+	
+	$my_fields = array(''=>'nessun campo');
+	$fields = field_info_field_map();
+	foreach ($fields as $name => $field) {
+		if (isset($field['bundles']['user']) && !empty($field['bundles']['user'])) {
+			if (isset($field['type']) && ($field['type']=='text'))
+				$my_fields[$name] = $name;
+		}
+	}
+
+    $form['spid_pasw_grp_adv']['spid_pasw_firstname'] = array(
+        '#type' => 'select', 
+        '#title' => t('Scegli il campo per nome'),
+		'#options' => $my_fields,
+        '#default_value' => variable_get('spid_pasw_firstname', 'field_nome'),
+        '#description' => t('Campo da usare per NOME.'),
+    );
+	
+    $form['spid_pasw_grp_adv']['spid_pasw_lastname'] = array(
+        '#type' => 'select', 
+        '#title' => t('Scegli il campo per cognome'),
+		'#options' => $my_fields,
+        '#default_value' => variable_get('spid_pasw_lastname', 'field_cognome'),
+        '#description' => t('Campo da usare per COGNOME.'),
+    );
+	
+    $form['spid_pasw_grp_adv']['spid_pasw_place'] = array(
+        '#type' => 'select', 
+        '#title' => t('Scegli il campo per luogo di nascita'),
+		'#options' => $my_fields,
+        '#default_value' => variable_get('spid_pasw_place', 'field_luogo_di_nascita'),
+        '#description' => t('Campo da usare per LUOGO DI NASCITA.'),
+    );
+	
+    $form['spid_pasw_grp_adv']['spid_pasw_prov'] = array(
+        '#type' => 'select', 
+        '#title' => t('Scegli il campo per provincia di nascita'),
+		'#options' => $my_fields,
+        '#default_value' => variable_get('spid_pasw_prov', 'field_provincia_di'),
+        '#description' => t('Campo da usare per PROVINCIA DI NASCITA.'),
+    );
+	
+	$my_fields = array(''=>'nessun campo');
+	$fields = field_info_field_map();
+	foreach ($fields as $name => $field) {
+		if (isset($field['bundles']['user']) && !empty($field['bundles']['user'])) {
+			if (isset($field['type']) && (($field['type']=='date') || ($field['type']=='datetime')))
+				$my_fields[$name] = $name;
+		}
+	}
+
+    $form['spid_pasw_grp_adv']['spid_pasw_date'] = array(
+        '#type' => 'select', 
+        '#title' => t('Scegli il campo per data di nascita'),
+		'#options' => $my_fields,
+        '#default_value' => variable_get('spid_pasw_date', 'field_data_di_nascita'),
+        '#description' => t('Campo da usare per DATA DI NASCITA.'),
+    );
+	
+	$my_fields = array(''=>'nessun campo');
+	$fields = field_info_field_map();
+	foreach ($fields as $name => $field) {
+		if (isset($field['bundles']['user']) && !empty($field['bundles']['user'])) {
+			if (isset($field['type']) && (($field['type']=='text') || ($field['type']=='codice_fiscale_basic')))
+				$my_fields[$name] = $name;
+		}
+	}
+
+    $form['spid_pasw_grp_adv']['spid_pasw_cf'] = array(
+        '#type' => 'select', 
+        '#title' => t('Scegli il campo per codice fiscale'),
+		'#options' => $my_fields,
+        '#default_value' => variable_get('spid_pasw_cf', 'field_codice_fiscale'),
+        '#description' => t('Campo da usare per CODICE FISCALE.'),
+    );
+	
     return system_settings_form($form);
 }
 
@@ -781,11 +890,17 @@ function _spid_pasw_remove_unwanted_chars($str)
  */
 function _spid_pasw_get_authname() {
     global $_simplesamlphp_auth_saml_attributes;
+	$table = 'field_data_' . variable_get('spid_pasw_cf', 'field_codice_fiscale');
+	//drupal_set_message($table);
+	if ((variable_get('spid_pasw_username_fiscalnumber', FALSE) == TRUE)
+		|| !(db_table_exists($table))) {
+		return _spid_pasw_get_authname_fiscalnumber();
+	}
 	$tmp_user = NULL;
 	if (isset($_simplesamlphp_auth_saml_attributes['fiscalNumber']) == false)
         throw new Exception(t('error in spid_pasw.module: no valid unique id attribute set'));
 	$fiscal_number = substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0], 6);
-	$query = db_select('field_data_field_codice_fiscale', 'f');
+	$query = db_select($table, 'f');
 	$query->condition('field_codice_fiscale_value', $fiscal_number, '=');
 	$query->join('users', 'u', 'f.entity_id = u.uid');
 	$query->fields('u', array('name'));
@@ -809,10 +924,7 @@ function _spid_pasw_get_authname() {
 	return $authname;
 }
 
-//drupal_set_message(_spid_pasw_get_authname());
-
-/*
-function _spid_pasw_get_authname() {
+function _spid_pasw_get_authname_fiscalnumber() {
     global $_simplesamlphp_auth_saml_attributes;
 
     $authname = '';
@@ -822,6 +934,7 @@ function _spid_pasw_get_authname() {
         _simplesaml_auth_debug(t('_spid_pasw_get_authname: Valid local session exist'));
         if (isset($_simplesamlphp_auth_saml_attributes['fiscalNumber'])) {
             $authname = $_simplesamlphp_auth_saml_attributes['fiscalNumber'][0];
+			$authname = substr($authname, 6);
         } else if (isset($_simplesamlphp_auth_saml_attributes['ivaCode'])) {
             $authname = $_simplesamlphp_auth_saml_attributes['ivaCode'][0];
         } else {
@@ -829,11 +942,8 @@ function _spid_pasw_get_authname() {
         }
     }
 
-    $authname = substr($authname, 6);
-
     return $authname;
 }
-*/
 
 /**
  * Gets the default fiscal number from the SAML assertion.

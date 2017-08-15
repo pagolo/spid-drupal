@@ -1,5 +1,5 @@
 name = SPID Pasw
-description = Permette l'autenticazione in pacchetto Drupal PASW per mezzo del protocollo SPID
+description = Permette l'autenticazione in CMS Drupal per mezzo del protocollo SPID
 php = 5.1
 core = 7.x
 configure = admin/config/people/spid_auth
@@ -8,7 +8,7 @@ scripts[] = vendor/agid/js/spid-sp-access-button.min.js
 scripts[] = js/spid_bottone.js
 dependencies[] = jquery_update
 
-version = "7.x-beta5"
+version = "7.x-0.1"
 core = "7.x"
 project = "spid_pasw"
 datestamp = "1462725324"

@@ -40,6 +40,12 @@ function spid_pasw_uninstall() {
   @variable_del('spid_pasw_authsource_aruba');
   @variable_del('spid_pasw_authsource_namirial');
   @variable_del('spid_pasw_authsource_italia');
+  @variable_del('spid_pasw_firstname');
+  @variable_del('spid_pasw_lastname');
+  @variable_del('spid_pasw_place');
+  @variable_del('spid_pasw_date');
+  @variable_del('spid_pasw_cf');
+  @variable_get('spid_pasw_province');
   
   @variable_del('spid_pasw_logout_page');
   @variable_del('spid_pasw_authsource');
