@@ -97,7 +97,7 @@ function spid_pasw_admin_paths() {
 function spid_pasw_page_build(&$page) {
 	global $user;
 	static $count = 0;
-	if (arg(0) == 'user' && $user->uid == 0 && $count == 0 && _spid_pasw_isEnabled()) {
+	if (arg(0) == 'user' && (arg(1) == null || arg(1) == 'login') && $user->uid == 0 && $count == 0 && _spid_pasw_isEnabled()) {
 		$page['content']['spid'] = array (
 			'#markup' => '<strong>oppure</strong>&nbsp;' . _spid_pasw_spidbutton(),
 			'#weight' => 200,
