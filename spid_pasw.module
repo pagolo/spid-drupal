@@ -275,12 +275,23 @@ function spid_pasw_loginpage() {
     return $output;
 }
 
-function _spid_pasw_set_field($field,$value) {
+function _spid_pasw_get_cf_key($name) {
+	$a = field_info_field($name);
+	if (!$a) {
+		echo "errore: necessario campo 'Codice Fiscale'";
+		exit;
+	}
+	return $a['type'] == 'text'? 'value' : 'code';
+}
+
+function _spid_pasw_set_field($field, $value, $cf = FALSE) {
 	global $user;
 	if (empty($field) || !property_exists($user, $field))
 		return;
+	$key = 'value';
+	if ($cf) $key = _spid_pasw_get_cf_key($field);
 	$ptr = &$user->$field;
-	$ptr[LANGUAGE_NONE][0]['value'] = $value;
+	$ptr[LANGUAGE_NONE][0][$key] = $value;
 }
 
 /**
@@ -357,7 +368,7 @@ function spid_pasw_init() {
 							$nome = variable_get('spid_pasw_firstname','field_nome');
 							_spid_pasw_set_field($nome,$_simplesamlphp_auth_saml_attributes['name'][0]);
 							$cf = variable_get('spid_pasw_cf','field_codice_fiscale');
-							_spid_pasw_set_field($cf,substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0],6));
+							_spid_pasw_set_field($cf,substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0],6),TRUE);
 							$date = variable_get('spid_pasw_date','field_data_di_nascita');
 							if (isset($_simplesamlphp_auth_saml_attributes['dateOfBirth'])
 								&& property_exists($user,$date)) {
@@ -890,7 +901,8 @@ function _spid_pasw_remove_unwanted_chars($str)
  */
 function _spid_pasw_get_authname() {
     global $_simplesamlphp_auth_saml_attributes;
-	$table = 'field_data_' . variable_get('spid_pasw_cf', 'field_codice_fiscale');
+	$cf_name = variable_get('spid_pasw_cf', 'field_codice_fiscale');
+	$table = 'field_data_' . $cf_name;
 	//drupal_set_message($table);
 	if ((variable_get('spid_pasw_username_fiscalnumber', FALSE) == TRUE)
 		|| !(db_table_exists($table))) {
@@ -900,8 +912,10 @@ function _spid_pasw_get_authname() {
 	if (isset($_simplesamlphp_auth_saml_attributes['fiscalNumber']) == false)
         throw new Exception(t('error in spid_pasw.module: no valid unique id attribute set'));
 	$fiscal_number = substr($_simplesamlphp_auth_saml_attributes['fiscalNumber'][0], 6);
+	$key = _spid_pasw_get_cf_key($cf_name);
+	$field = $cf_name . '_' . $key;
 	$query = db_select($table, 'f');
-	$query->condition('field_codice_fiscale_value', $fiscal_number, '=');
+	$query->condition($field, $fiscal_number, '=');
 	$query->join('users', 'u', 'f.entity_id = u.uid');
 	$query->fields('u', array('name'));
 	$result = $query->execute();
