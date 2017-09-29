@@ -1,5 +1,4 @@
 <?php
-//variable_set('spid_pasw_authsource_sielte', 'http://paolo.casabozzo.net/simplesamlphp/www/saml2/idp/metadata.php');//'http://paolo.casabozzo.net/simplesamlphp/www/saml2/idp/SSOService.php');
 /**
  * versione PASW - Paolo Bozzo
  * versione nata all'interno del progetto SPID per PorteAperteSulWeb
@@ -766,7 +765,7 @@ function spid_pasw_settings() {
 	$fields = field_info_field_map();
 	foreach ($fields as $name => $field) {
 		if (isset($field['bundles']['user']) && !empty($field['bundles']['user'])) {
-			if (isset($field['type']) && (($field['type']=='date') || ($field['type']=='datetime')))
+			//if (isset($field['type']) && (($field['type']=='date') || ($field['type']=='datetime')))
 				$my_fields[$name] = $name;
 		}
 	}
