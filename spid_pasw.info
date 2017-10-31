@@ -1,6 +1,6 @@
 name = SPID Pasw
 description = Permette l'autenticazione in CMS Drupal per mezzo del protocollo SPID
-php = 5.1
+php = 5.4
 core = 7.x
 configure = admin/config/people/spid_auth
 stylesheets[all][] = vendor/agid/css/spid-sp-access-button.min.css
