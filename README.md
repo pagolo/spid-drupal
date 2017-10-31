@@ -1,4 +1,4 @@
-# SPID-PASW
+# SPiD for Drupal
 
 ## Cos'è SPID
 SPID, Sistema Pubblico di Identità Digitale, è il nuovo metodo di login che permette a cittadini
