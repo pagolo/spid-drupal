@@ -5,6 +5,47 @@
  * the install file for the spid_pasw module
  */
 
+
+/**
+ * @PASW aggiorna il file di metadati della libreria
+ * 
+ */
+function spid_pasw_metadata_update()
+{
+  chdir (drupal_get_path('module', 'spid_pasw') . '/metadata');
+  $filename = 'saml20-idp-remote.php';
+  $dest = spid_pasw_get_lib_path() . '/metadata/' . $filename; 
+  copy ($filename, $dest);
+}
+
+/**
+ * @PASW rileva percorso libreria installata con installatore specifico
+ * 
+ */
+function spid_pasw_get_lib_path()
+{
+	$result = '/var/simplesamlphp';
+	$orig = getcwd();
+	$root = $_SERVER['DOCUMENT_ROOT'];
+	chdir ($root);
+	if (file_exists('simplespidphp')) {
+		chdir('simplespidphp');
+		$result = getcwd();
+	} else if (is_writable('..') && file_exists('../simplespidphp')) {
+		chdir('../simplespidphp');
+		$result = getcwd();
+	}
+	chdir($orig);
+	return $result;
+}
+
+/**
+ * Implements hook_update_N().
+ */
+function spid_pasw_update_7001() {
+  spid_pasw_metadata_update();
+}
+
 /**
  * Implements hook_install().
  */
@@ -40,6 +81,7 @@ function spid_pasw_uninstall() {
   @variable_del('spid_pasw_authsource_aruba');
   @variable_del('spid_pasw_authsource_namirial');
   @variable_del('spid_pasw_authsource_italia');
+  @variable_del('spid_pasw_authsource_intesa');
   @variable_del('spid_pasw_firstname');
   @variable_del('spid_pasw_lastname');
   @variable_del('spid_pasw_place');

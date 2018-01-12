@@ -159,7 +159,7 @@ function spid_pasw_loginpage() {
     global $base_url;
     global $_simplesamlphp_auth_as;
 
-    $fail = NULL;
+    $fail = FALSE;
     $output = NULL;
 
     if (!_spid_pasw_isEnabled()) {
@@ -232,6 +232,8 @@ function spid_pasw_loginpage() {
             $options['saml:idp'] = $_REQUEST['namirial_id'];
         } elseif ((isset($_REQUEST['register_id']) && $_REQUEST['register_id'])) {
             $options['saml:idp'] = $_REQUEST['register_id'];
+        } elseif ((isset($_REQUEST['intesa_id']) && $_REQUEST['intesa_id'])) {
+            $options['saml:idp'] = $_REQUEST['intesa_id'];
         } else {
             drupal_set_message(t('We\'re sorry. There was a problem. The issue has been logged for the administrator.'));
             drupal_goto('<front>');
@@ -652,6 +654,11 @@ function spid_pasw_settings() {
         '#type' => 'hidden',
         '#title' => t('Authenticaton id for SpidItalia'),
         '#default_value' => variable_get('spid_pasw_authsource_italia', 'https://spid.register.it'),
+    );
+    $form['spid_pasw_grp_setup']['spid_pasw_authsource_intesa'] = array(
+        '#type' => 'hidden',
+        '#title' => t('Authenticaton id for IntesaID'),
+        '#default_value' => variable_get('spid_pasw_authsource_intesa', 'https://spid.intesa.it'),
     );
 
     $form['spid_pasw_grp_setup']['spid_pasw_forcehttps'] = array(
@@ -1324,14 +1331,18 @@ function _spid_pasw_spidbutton() {
     $spid_idp_registerid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-spiditalia.svg';
     $spid_idp_registerid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-spiditalia.png';
 
+    $spid_idp_intesaid_svg = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-intesaid.svg';
+    $spid_idp_intesaid_png = '/' . drupal_get_path('module', "spid_pasw") . '/vendor/agid/img/spid-idp-intesaid.png';
+
     $infocert_id = variable_get('spid_pasw_authsource_infocert', 'https://identity.infocert.it');
     $poste_id = variable_get('spid_pasw_authsource_poste', 'https://posteid.poste.it');
     $tim_id = variable_get('spid_pasw_authsource_tim', 'https://login.id.tim.it/affwebservices/public/saml2sso');
     $sielte_id = variable_get('spid_pasw_authsource_sielte', 'identity.sieltecloud.it');
     if (isset($metadata[$sielte_id]) == false) $sielte_id = 'https://' . $sielte_id;
     $aruba_id = variable_get('spid_pasw_authsource_aruba', 'https://loginspid.aruba.it');
-	$namirial_id = variable_get('spid_pasw_authsource_namirial', 'https://idp.namirialtsp.com/idp');
-	$register_id = variable_get('spid_pasw_authsource_italia', 'https://spid.register.it');
+    $namirial_id = variable_get('spid_pasw_authsource_namirial', 'https://idp.namirialtsp.com/idp');
+    $register_id = variable_get('spid_pasw_authsource_italia', 'https://spid.register.it');
+    $intesa_id =  variable_get('spid_pasw_authsource_intesa', 'https://spid.intesa.it');
 
     $formaction = url('saml_login');
 
@@ -1363,6 +1374,9 @@ function _spid_pasw_spidbutton() {
                 </li>
                 <li class="spid-idp-button-link">
                     <button class="idp-button-idp-logo" name="register_id" type="submit" value="$register_id"><span class="spid-sr-only">SpidItalia ID</span><img class="spid-idp-button-logo" src="$spid_idp_registerid_png" onerror="this.src='$spid_idp_registerid_svg'; this.onerror=null;" alt="SpidItalia ID" /></button>
+                </li>
+                <li class="spid-idp-button-link">
+                    <button class="idp-button-idp-logo" name="intesa_id" type="submit" value="$intesa_id"><span class="spid-sr-only">Intesa ID</span><img class="spid-idp-button-logo" src="$spid_idp_intesaid_png" onerror="this.src='$spid_idp_intesaid_svg'; this.onerror=null;" alt="Intesa ID" /></button>
                 </li>
                 <li class="spid-idp-support-link">
                     <a href="http://www.spid.gov.it">Maggiori info</a>
