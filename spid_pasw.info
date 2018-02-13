@@ -8,7 +8,7 @@ scripts[] = vendor/agid/js/spid-sp-access-button.min.js
 scripts[] = js/spid_bottone.js
 dependencies[] = jquery_update
 
-version = "7.x-0.4"
+version = "7.x-0.5"
 core = "7.x"
 project = "spid_pasw"
 datestamp = "1462725324"
