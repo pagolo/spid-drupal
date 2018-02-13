@@ -240,11 +240,12 @@ function spid_pasw_loginpage() {
         }
 
         // Require the user to be authenticated.
-
+/*
 		$authformat = variable_get('spid_pasw_authuri', 'https://www.spid.gov.it/%s');
 		$authlevel = variable_get('spid_pasw_authlevel', 'SpidL1');
         $options['saml:AuthnContextClassRef'] = sprintf($authformat, $authlevel);
         $options['samlp:RequestedAuthnContext'] = array("Comparison" => "minimum");
+*/
         $options['ErrorURL'] = base_path();
         $_simplesamlphp_auth_as->requireAuth($options);
 
@@ -301,66 +302,68 @@ function _spid_pasw_set_field($field, $value, $cf = FALSE) {
  * @PASW scrittura accessi nel log
  */
 function spid_pasw_init() {
-    global $user;
-    global $_simplesamlphp_auth_as;
-    global $_simplesamlphp_auth_saml_attributes;
-    global $_simplesamlphp_auth_saml_config;
-    global $_simplesamlphp_auth_saml_version;
+  global $user;
+  global $_simplesamlphp_auth_as;
+  global $_simplesamlphp_auth_saml_attributes;
+  global $_simplesamlphp_auth_saml_config;
+  global $_simplesamlphp_auth_saml_version;
+  $access = 0;
 //	$semaphore = sem_get(111222);
-	
-    if (!_spid_pasw_isEnabled(TRUE)) {
-        // Exit without initializing.
-        return;
-    }
 
-    // Get the simplesamlphp session.
-    $basedir = variable_get('spid_pasw_installdir', '/var/simplesamlphp');
+  if (!_spid_pasw_isEnabled(TRUE)) {
+      // Exit without initializing.
+      return;
+  }
 
-    require_once($basedir . '/lib/_autoload.php');
+  // Get the simplesamlphp session.
+  $basedir = variable_get('spid_pasw_installdir', '/var/simplesamlphp');
 
-    $_simplesamlphp_auth_saml_config = SimpleSAML_Configuration::getInstance();
-    $_simplesamlphp_auth_saml_version = $_simplesamlphp_auth_saml_config->getVersion();
+  require_once($basedir . '/lib/_autoload.php');
 
-    // Load simpleSAMLphp, configuration and metadata.
-    $_simplesamlphp_auth_as = new SimpleSAML_Auth_Simple(variable_get('spid_pasw_authsource', 'default-sp'));
-    $_simplesamlphp_auth_saml_attributes = $_simplesamlphp_auth_as->getAttributes();
+  $_simplesamlphp_auth_saml_config = SimpleSAML_Configuration::getInstance();
+  $_simplesamlphp_auth_saml_version = $_simplesamlphp_auth_saml_config->getVersion();
+
+  // Load simpleSAMLphp, configuration and metadata.
+  $_simplesamlphp_auth_as = new SimpleSAML_Auth_Simple(variable_get('spid_pasw_authsource', 'default-sp'));
+  $_simplesamlphp_auth_saml_attributes = $_simplesamlphp_auth_as->getAttributes();
 
 	$file = fopen(file_directory_temp()."/spidcheck","w+");
 	flock($file,LOCK_EX);
 	//sem_acquire($semaphore);
 	
-    if ($user->uid == 0) {
-        // User is not logged in to Drupal.
-        if ($_simplesamlphp_auth_as->isAuthenticated()) {
-            // User is logged in - SimpleSAMLphp (but not Drupal).
-            // Get unique identifier from saml attributes.
+  if ($user->uid == 0) {
+    // User is not logged in to Drupal.
+    if ($_simplesamlphp_auth_as->isAuthenticated()) {
+      // User is logged in - SimpleSAMLphp (but not Drupal).
+      // Get unique identifier from saml attributes.
 
-            $authname = _spid_pasw_get_authname();
+      $authname = _spid_pasw_get_authname();
 
-            _simplesaml_auth_debug(t('Authname is [%authname] userid is [%uid]', array('%authname' => $authname, '%uid' => $user->uid)));
+      _simplesaml_auth_debug(t('Authname is [%authname] userid is [%uid]', array('%authname' => $authname, '%uid' => $user->uid)));
 
-            if (!empty($authname)) {
-                // User is logged in with SAML authentication and we got the unique identifier.
-                // Try to log into Drupal.
-                SimpleSAML_Logger::alert('Utente ' . $authname . ' (' . _spid_pasw_get_fiscal_number(0) . ') autenticato via SPID');
-                _simplesaml_auth_debug(t('Load user [%authname]', array('%authname' => $authname)));
+      if (!empty($authname)) {
+        $access = 1;
+        $_SESSION['spid-access'] = TRUE;
+        // User is logged in with SAML authentication and we got the unique identifier.
+        // Try to log into Drupal.
+        SimpleSAML_Logger::alert('Utente ' . $authname . ' (' . _spid_pasw_get_fiscal_number(0) . ') autenticato via SPID');
+        _simplesaml_auth_debug(t('Load user [%authname]', array('%authname' => $authname)));
 
-                // Retrieve user by name and attempt to log the user in.
-                $ext_user = user_load_by_name($authname);
+        // Retrieve user by name and attempt to log the user in.
+        $ext_user = user_load_by_name($authname);
 
-                if (!$ext_user) {
-                    // First we check the admin settings for simpleSAMLphp and find out if we are allowed to register users.
-                    if (variable_get('spid_pasw_registerusers', TRUE)) {
+        if (!$ext_user) {
+          // First we check the admin settings for simpleSAMLphp and find out if we are allowed to register users.
+          if (variable_get('spid_pasw_registerusers', TRUE)) {
 
-                        // We are allowed to register new users.
-                        _simplesaml_auth_debug(t('Register [%authname]', array('%authname' => $authname)));
+            // We are allowed to register new users.
+            _simplesaml_auth_debug(t('Register [%authname]', array('%authname' => $authname)));
 
-                        user_external_login_register($authname, 'spid_pasw');
-
-                        if ($user) {
-                            // Populate roles based on configuration setting.
-                            $roles = _spid_pasw_rolepopulation(variable_get('spid_pasw_rolepopulation', ''));
-                            $userinfo = array(
+            user_external_login_register($authname, 'spid_pasw');
+            if ($user) {
+              // Populate roles based on configuration setting.
+              $roles = _spid_pasw_rolepopulation(variable_get('spid_pasw_rolepopulation', ''));
+              $userinfo = array(
 								'roles' => $roles,
 							);
 							// @PASW gestione attributi->campi
@@ -388,48 +391,53 @@ function spid_pasw_init() {
 								$ptr = &$user->$prov;
 								$ptr[LANGUAGE_NONE][0]['value'] = $_simplesamlphp_auth_saml_attributes['countyOfBirth'][0];
 							}
-                            $user = user_save($user, $userinfo); // @todo - Fjernet rolle-delen her da den gav en bra feilmelding når roller ikke finnes ;)
-                       }
-                    } else {
-                        // We are not allowed to register new users on the site through simpleSAML.
-                        // We let the user know about this and redirect to the user/login page.
-                        $msg = t("We are sorry. While you have successfully authenticated, you are not yet entitled to access this site. Please ask the site administrator to provision access for you.");
-                        drupal_set_message(check_plain($msg));
+              $user = user_save($user, $userinfo); // @todo - Fjernet rolle-delen her da den gav en bra feilmelding når roller ikke finnes ;)
+            }
+          } else {
+            // We are not allowed to register new users on the site through simpleSAML.
+            // We let the user know about this and redirect to the user/login page.
+            $msg = t("We are sorry. While you have successfully authenticated, you are not yet entitled to access this site. Please ask the site administrator to provision access for you.");
+            drupal_set_message(check_plain($msg));
 						//sem_release($semaphore);
 						flock($file,LOCK_UN);fclose($file);
-                        $_simplesamlphp_auth_as->logout(base_path());
+            $_simplesamlphp_auth_as->logout(base_path());
 						return;
-                    }
-                } else {
-                    // If successfully logged into Drupal.
-                    // See if we're supposed to re-evaluate role assignments.
+          }
+        } else {
+          // If successfully logged into Drupal.
+          // See if we're supposed to re-evaluate role assignments.
 
-                    /* removed roles re-evaluation */
-                    // No need to evaluate roles, populate the user object.
-                    // don't login if user disabled
-                    if ($ext_user->status == 0) {
-                        drupal_set_message('utente disabilitato');
+          /* removed roles re-evaluation */
+          // No need to evaluate roles, populate the user object.
+          // don't login if user disabled
+          if ($ext_user->status == 0) {
+            drupal_set_message('utente disabilitato');
 						SimpleSAML_Logger::alert('Utente disabilitato ' . $authname . ' autenticato ma non loggato');
 						//sem_release($semaphore);
 						flock($file,LOCK_UN);fclose($file);
-                        $_simplesamlphp_auth_as->logout(base_path());
-                        return;
-                    }
-                    $user = $ext_user;
+            $_simplesamlphp_auth_as->logout(base_path());
+            return;
+          }
+          $user = $ext_user;
+          if (module_exists('rules')) {
+            rules_invoke_event('spid_pasw_rules_event_login', $user);
+          }
+        }
 
-                    if (module_exists('rules')) {
-                        rules_invoke_event('spid_pasw_rules_event_login', $user);
-                    }
-                }
-
-                // Finalizing the login, calls hook_user op login.
-                $edit = array();
-                user_login_finalize($edit);
-            } // End if !empty authname.
-        } // End if isset saml_session.
-    } // End if user->uid.
+        // Finalizing the login, calls hook_user op login.
+        $edit = array();
+        user_login_finalize($edit);
+      } // End if !empty authname.
+    } // End if isset saml_session.
+  } // End if user->uid.
 	//sem_release($semaphore);
 	flock($file,LOCK_UN);fclose($file);
+  if ($access == 0 && $_SESSION['spid-access']) {
+    $_SESSION['spid-access'] = FALSE;
+    $serv = variable_get('spid_pasw_servicedir', '');
+    if (!empty($serv) && drupal_valid_path($serv))
+      drupal_goto($serv);
+  } 
 }
 
 /**
@@ -591,6 +599,14 @@ function spid_pasw_settings() {
         '#description' => t('Cartella della libreria. Percorso assoluto senza slash finale.<br>IMPORTANTE: se la libreria &egrave; installata correttamente deve comparire in automatico il valore appropriato.'),
     );
 
+    $form['spid_pasw_grp_setup']['spid_pasw_servicedir'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Eventuale alias del servizio'),
+        '#default_value' => variable_get('spid_pasw_servicedir', ''),
+        '#description' => t('Alias del servizio (per es. per la pagina https://pa.gov.it/servizio scrivere "servizio"), lasciare vuoto per ridirigere alla pagina utente.'),
+    );
+
+/*
     $form['spid_pasw_grp_setup']['spid_pasw_authlevel'] = array(
         '#type' => 'radios',
         '#title' => t('Livello di autenticazione SPID'),
@@ -612,12 +628,12 @@ function spid_pasw_settings() {
 			'urn:oasis:names:tc:SAML:2.0:ac:classes:%s' => 'Autenticazione obsoleta',
 		),
     );
-
+*/
     $form['spid_pasw_grp_setup']['spid_pasw_authsource'] = array(
-        '#type' => 'hidden', // fieldset
+        '#type' => 'textfield', // fieldset
         '#title' => t('Authenticaton source for this SP (default: default-sp)'),
-        '#default_value' => variable_get('spid_auth_authsource', 'default-sp'),
-        '#description' => t('The name of the source to use from /var/simplesamlphp/config/authsources.php'),
+        '#default_value' => variable_get('spid_pasw_authsource', 'default-sp'),
+        '#description' => t('The name of the source to use from simplespidphp/config/authsources.php'),
     );
 
     $form['spid_pasw_grp_setup']['spid_pasw_authsource_infocert'] = array(
@@ -1343,6 +1359,8 @@ function _spid_pasw_spidbutton() {
     $namirial_id = variable_get('spid_pasw_authsource_namirial', 'https://idp.namirialtsp.com/idp');
     $register_id = variable_get('spid_pasw_authsource_italia', 'https://spid.register.it');
     $intesa_id =  variable_get('spid_pasw_authsource_intesa', 'https://spid.intesa.it');
+    //$intesa_id =  'http://paolo.suse.lan/simplesamlphp/www/saml2/idp/metadata.php';//#@TODOs
+
 
     $formaction = url('saml_login');
 
