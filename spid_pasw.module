@@ -432,7 +432,7 @@ function spid_pasw_init() {
   } // End if user->uid.
 	//sem_release($semaphore);
 	flock($file,LOCK_UN);fclose($file);
-  if ($access == 0 && $_SESSION['spid-access']) {
+  if ($access == 0 && isset($_SESSION['spid-access']) && $_SESSION['spid-access']) {
     $_SESSION['spid-access'] = FALSE;
     $serv = variable_get('spid_pasw_servicedir', '');
     if (!empty($serv) && drupal_valid_path($serv))
