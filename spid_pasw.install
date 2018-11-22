@@ -47,6 +47,13 @@ function spid_pasw_update_7001() {
 }
 
 /**
+ * Implements hook_update_N().
+ */
+function spid_pasw_update_7002() {
+  spid_pasw_metadata_update();
+}
+
+/**
  * Implements hook_install().
  */
 function spid_pasw_install() {
